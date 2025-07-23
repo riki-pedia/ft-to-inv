@@ -1,0 +1,6 @@
+node_modules/
+package-lock.json
+.vscode/
+ft-to-inv.jsonc
+import.old.json
+invidious-import.json

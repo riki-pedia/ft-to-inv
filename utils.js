@@ -147,18 +147,7 @@ async function getChannelName(ucid) {
     return ucid; // Fallback to ID if failed
   }
 }
-
-// Utility to strip long paths in logs
-function stripDir(filePath, freetubeDir, exportDir, dontShorten) {
-  if (dontShorten || typeof filePath !== 'string') return filePath;
-  const pNorm = normalizePath(filePath);
-  const ftNorm = normalizePath(freetubeDir);
-  const exNorm = normalizePath(exportDir);
-  if (pNorm.startsWith(ftNorm)) return pNorm.replace(ftNorm, '<FreeTubeDir>');
-  if (pNorm.startsWith(exNorm)) return pNorm.replace(exNorm, '<ExportDir>');
-  return pNorm;
-}
-
+//stripDir goes in export, not used here
 module.exports = {
   loadNDJSON,
   extractSubscriptions,
@@ -167,5 +156,4 @@ module.exports = {
   noSyncWrite,
   postToInvidious,
   getChannelName,
-  stripDir
 };

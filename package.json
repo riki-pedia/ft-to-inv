@@ -24,5 +24,10 @@
   "main": "export.js",
   "scripts": {
     "test": "node --use-system-ca export.js"
+  },
+  "dependencies": {
+    "comment-json": "^4.2.5",
+    "delay": "^6.0.0",
+    "strip-json-comments": "^5.0.2"
   }
 }

@@ -12,29 +12,38 @@ const {
   writeNewExport,
   noSyncWrite,
   postToInvidious,
-  getChannelName,
-  stripDir
+  getChannelName
 } = require('./utils');
 const cron = require('node-cron');
 
 const args = process.argv.slice(2);
+// cron is the only arg that should reasonably have spaces, so we handle it specially
 const getArg = (name, fallback = null) => {
   const index = args.findIndex(arg => arg === name || arg.startsWith(name + '='));
   if (index !== -1) {
     const split = args[index].split('=');
-    return split.length > 1 ? split[1] : args[index + 1];
+    if (split.length > 1) return split[1];
+    // Special handling for --cron or -cron spaced format
+    if (name === '--cron' || name === '-cron' || name === '--cron-schedule') {
+      const cronParts = args.slice(index + 1, index + 6);
+      if (cronParts.length >= 5 && cronParts.every(p => /^(\*|\d+)$/.test(p))) {
+        return cronParts.join(' ');
+      }
+      // fallback: maybe it's just one arg
+      if (args[index + 1]) return args[index + 1];
+    }
+    return args[index + 1];
   }
   return fallback;
 };
 
 // -- Globals (to be assigned in bootstrap) --
-let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE;
+let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE, DONT_SHORTEN_PATHS;
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH;
 let OUTPUT_FILE, OLD_EXPORT_PATH;
 // should be global so utils can access it
-let config = loadConfig();
-let FREETUBE_DIR = config.freetube_dir || null;
-let EXPORT_DIR = config.export_dir || '.';
+let FREETUBE_DIR 
+let EXPORT_DIR 
 // -- Bootstrap & main flow --
 /**
  * Resolves a boolean flag from CLI args or config file.
@@ -57,35 +66,65 @@ function resolveFlagArg(args, aliases, config, configKey) {
 
   return false; // Default fallback
 }
+// function to validate cron strings by checking if they has 5 parts, a number or * in each part, or 1 string
+function isValidCron(cronString) {
+  if (typeof cronString !== 'string') return false; // Add this line
+  const parts = cronString.split(' ');
+  if (parts.length !== 5) return false;
+  return parts.every(part => /^\d+$/.test(part) || part === '*');
+}
+// see end of utils for why i moved this here
+function stripDir(p) {
+    if (!p || typeof p !== 'string') return p;
+    if (DONT_SHORTEN_PATHS) return p;
+    const toUnix = x => x.replaceAll('\\', '/');
+    const norm = toUnix(path.resolve(p));
+    const ft = toUnix(path.resolve(FREETUBE_DIR));
+    const ex = toUnix(path.resolve(EXPORT_DIR));
+    if (norm.startsWith(ft)) return norm.replace(ft, '<FreeTubeDir>');
+    if (norm.startsWith(ex)) return norm.replace(ex, '<ExportDir>');
+    return norm; 
+  }
+// Main function to run the export and sync process
 async function main() {
+  const ENV_CONFIG_PATH = process.env.FT_TO_INV_CONFIG || process.env.FT_TO_INV_CONFIG_PATH || process.env.FT_INV_CONFIG || process.env.CONFIG;
+  // we parse configPath in config.js, but this gets used for checking if it's the first run
+  const configPath = getArg('--config') || getArg('-c') || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
+  const exportPath = path.join('./', 'invidious-import.json'); // default export path for first-run check
+  const isFirstRun = !fs.existsSync(exportPath) && !fs.existsSync(configPath);
+  // Only run setup if truly first time
+  let config;
+  if (isFirstRun) {
+    config = await runFirstTimeSetup();
+  } else {
+    config = loadConfig();
+  }
   // Load/merge CLI args + config file
   // Detect first-run (no config file or no prior export)
-  const firstExport = path.join(config.export_dir || '.', 'invidious-import.json');
-  const isFirstRun = !fs.existsSync(firstExport) && !config.token;
-  if (isFirstRun) {
-    console.log('🛠 First time setup');
-    config = await runFirstTimeSetup();
-  }
   // Assign globals from config
-  EXPORT_DIR = normalizePath(getArg('--export-dir')) || normalizePath(getArg('-e')) || getArg(normalizePath('.')) || normalizePath(config.export_dir);
+  EXPORT_DIR = normalizePath(getArg('--export-dir')) || normalizePath(getArg('-e')) || normalizePath(config.export_dir) || normalizePath('.');
   FREETUBE_DIR = normalizePath(getArg('--freetube-dir')) || normalizePath(getArg('-f')) || normalizePath(getArg('-cd')) || normalizePath(config.freetube_dir) || getDefaultFreeTubeDir();
   // these files are always those names, not taking args for them
   PROFILE_PATH = path.join(FREETUBE_DIR, 'profiles.db');
   HISTORY_PATH = path.join(FREETUBE_DIR, 'history.db');
   PLAYLIST_PATH = path.join(FREETUBE_DIR, 'playlists.db');
   // strings in cli, not boolean flags
-  TOKEN      = getArg('--token') || getArg('-t')|| config.token;
-  INSTANCE   = getArg('--instance') || getArg('-i') || config.instance;
+  TOKEN              = getArg('--token') || getArg('-t')|| config.token;
+  INSTANCE           = getArg('--instance') || getArg('-i') || config.instance;
 
-  VERBOSE    = resolveFlagArg(args, ['--verbose', '-v'], config, 'verbose')
-  DRY_RUN    = resolveFlagArg(args, ['--dry-run'], config, 'dry_run')
-  QUIET      = resolveFlagArg(args, ['--quiet','-q'], config, 'quiet');
-  INSECURE   = resolveFlagArg(args, ['--insecure'], config, 'insecure');
-  NOSYNC     = resolveFlagArg(args, ['--no-sync'], config, 'no_sync');
-  OUTPUT_FILE = firstExport
-  OLD_EXPORT_PATH = path.join(EXPORT_DIR, 'import.old.json');
-  CRON_SCHEDULE = getArg('--cron-schedule') || getArg('-c') || config.cron_schedule;
-  HELP       = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
+  VERBOSE            = resolveFlagArg(args, ['--verbose', '-v'], config, 'verbose')
+  DRY_RUN            = resolveFlagArg(args, ['--dry-run'], config, 'dry_run')
+  QUIET              = resolveFlagArg(args, ['--quiet','-q'], config, 'quiet');
+  INSECURE           = resolveFlagArg(args, ['--insecure'], config, 'insecure');
+  NOSYNC             = resolveFlagArg(args, ['--no-sync'], config, 'no_sync');
+  DONT_SHORTEN_PATHS = resolveFlagArg(args, ['--dont-shorten-paths'], config, 'dont_shorten_paths');
+
+  OUTPUT_FILE        = exportPath || path.join(EXPORT_DIR, 'invidious-import.json');
+  OLD_EXPORT_PATH    = path.join(EXPORT_DIR, 'import.old.json');
+  // -c is for config
+  CRON_SCHEDULE      = getArg('--cron-schedule') || getArg('-cron') || getArg('--cron') || config.cron_schedule || '';
+
+  HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {
    console.log(
     `FreeTube to Invidious Exporter
@@ -334,17 +373,18 @@ main().catch(err => {
   console.error('❌ Fatal error:', err);
   process.exit(1);
 });
-if (CRON_SCHEDULE !== '') {
+let validCron = isValidCron(CRON_SCHEDULE);
+if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === '' && CRON_SCHEDULE.length < 4  || validCron !== true) {
+  // silently fail because the user might not have set a cron schedule
+  return;
+} else {
   console.log(`⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`);
-  console.log('🔄 Running initial sync now...');
-  main().catch(err => {
-    console.error('❌ Fatal error during initial sync:', err);
-    process.exit(1);
-  });
-  console.log('initail sync complete, now scheduling with cron');
+  // run once
+  // runs below main() so we shouldn't call it here, just tell the user
+  console.log('✅ Initial sync complete, now scheduling recurring job...');
+  // run on interval
   cron.schedule(CRON_SCHEDULE, () => {
-    console.log(`🔄 Running scheduled sync...`);
-    console.log(`the current time is ${new Date().toLocaleString()}`);
+    console.log(`🔄 Running scheduled sync at ${new Date().toLocaleString()}`);
     main().catch(err => {
       console.error('❌ Fatal error:', err);
       process.exit(1);
