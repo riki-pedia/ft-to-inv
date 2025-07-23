@@ -105,6 +105,7 @@ export const defaultConfig = {
   dont_shorten_paths: false,
   cron_schedule: '' 
 
+
 };
 // ==== FIRST-TIME SETUP INTERACTIVE PROMPT ====
 async function runFirstTimeSetup() {

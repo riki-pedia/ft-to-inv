@@ -1,0 +1,28 @@
+{
+  "name": "ft-to-invidious-exporter",
+  "version": "0.0.1",
+  "description": "This takes whatever is in you're FreeTube data (history, playlists, subscriptions), and exports them in invidious style JSON format, where you can optionally sync to Invidious through the API",
+  "keywords": [
+    "FreeTube",
+    "Invidious",
+    "export",
+    "exporter",
+    "ft",
+    "inv"
+  ],
+  "homepage": "https://github.com/riki-pedia/ft-to-invidious-exporter#readme",
+  "bugs": {
+    "url": "https://github.com/riki-pedia/ft-to-invidious-exporter/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/riki-pedia/ft-to-invidious-exporter.git"
+  },
+  "license": "MIT",
+  "author": "riki-pedia",
+  "type": "commonjs",
+  "main": "export.js",
+  "scripts": {
+    "test": "node --use-system-ca export.js"
+  }
+}
