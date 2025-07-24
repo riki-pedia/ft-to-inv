@@ -97,7 +97,7 @@ async function main() {
   // Only run setup if truly first time
   let config;
   let dontRunSetup = resolveFlagArg(args, ['--dont-run-setup', '-drs', '--dont-run-first-time-setup'], {}, '');
-  if (isFirstRun || FIRST_TIME_SETUP === true && dontRunSetup !== true) {
+  if ((isFirstRun && dontRunSetup !== true) || FIRST_TIME_SETUP === true) {
     config = await runFirstTimeSetup();
   } else {
     config = loadConfig();
