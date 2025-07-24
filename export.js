@@ -41,6 +41,7 @@ const getArg = (name, fallback = null) => {
 let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE, DONT_SHORTEN_PATHS;
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH;
 let OUTPUT_FILE, OLD_EXPORT_PATH;
+let FIRST_TIME_SETUP = false; // flag to indicate if we should run the first-time setup
 // should be global so utils can access it
 let FREETUBE_DIR 
 let EXPORT_DIR 
@@ -87,6 +88,9 @@ function stripDir(p) {
   }
 // Main function to run the export and sync process
 async function main() {
+  // get the first time setup flag at the top before it's run/skipped
+  // the last two params look in the config file, so those should be blank here
+  FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts'], {}, '');
   const ENV_CONFIG_PATH = process.env.FT_TO_INV_CONFIG || process.env.FT_TO_INV_CONFIG_PATH || process.env.FT_INV_CONFIG || process.env.CONFIG;
   // we parse configPath in config.js, but this gets used for checking if it's the first run
   const configPath = getArg('--config') || getArg('-c') || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
@@ -94,7 +98,7 @@ async function main() {
   const isFirstRun = !fs.existsSync(exportPath) && !fs.existsSync(configPath);
   // Only run setup if truly first time
   let config;
-  if (isFirstRun) {
+  if (isFirstRun || FIRST_TIME_SETUP === true) {
     config = await runFirstTimeSetup();
   } else {
     config = loadConfig();
@@ -266,9 +270,15 @@ async function sync() {
     }
 
     let hadErrors = false;
-    const markError = (label, err) => {
+    const markError = (label, error) => {
       hadErrors = true;
-      console.error(`❌ ${label}:`, err);
+      console.error(`❌ ${label}:`, error);
+      const message = String(error).toLowerCase();
+      // node errors like UNABLE_TO_VERIFY_LEAF_SIGNATURE don't get included in the error object, this is all we get, but the full error is in the console
+      // error: unable to verify the first certificate; if the root ca is installed locally, try running node.js with --use-system-ca
+      if (message.includes("unable to verify the first certificate")) {
+      console.error('⚠️ This may be due to an invalid or self-signed certificate. Try running with --use-system-ca or setting the NODE_EXTRA_CA_CERTS environment variable.');
+      }
     };
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
