@@ -169,7 +169,6 @@ async function main() {
       process.exit(1);
     }
   }
-  console.log(TOKEN) // for debugging the gh action 
   if (!TOKEN && !DRY_RUN) {
     console.error('❌ No token specified.');
     process.exit(1);

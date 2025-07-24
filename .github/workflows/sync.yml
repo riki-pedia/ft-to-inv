@@ -33,6 +33,7 @@ jobs:
           echo {"_id":"allChannels","name":"Profile.All Channels","bgColor":"#9d0006","textColor":"#FFFFFF","subscriptions":[{"id":"UCBS1NUWY7oC6FFHaXQy4zAA","name":"Zach's Tech Turf","thumbnail":"https://yt3.ggpht.com/u_qUyuvPxysFAlmVypBaTtXFYW81vbWMAWl0xxjo-K1kP34KEIXj69iOn6ZqoYFBZWPIpEy-bg=s176-c-k-c0x00ffffff-no-rj"},{"id":"UCdBK94H6oZT2Q7l0-b0xmMg","name":"ShortCircuit","thumbnail":"https://yt3.ggpht.com/ytc/AIdro_mDZiWSYXmBc_fiS3QG-Uh5mJRdww9Z-2qUDeXtMZhGTQ=s176-c-k-c0x00ffffff-no-rj"}]} > dummy-ft/profiles.db
           echo {"playlistName":"a playlist","description":"","videos":[{"videoId":"QZfH7cFp3Ys","title":"Twenty One Pilots - The Contract (Official Video)","author":"twenty one pilots","authorId":"UCBQZwaNPFfJ1gZ1fLZpAEGw","lengthSeconds":265,"published":1749744071000,"timeAdded":1750918794381,"playlistItemId":"341b9933-59d3-45af-8802-e4b0b11e3246","type":"video"}] > dummy-ft/playlists.db
           mkdir -p ./exports
+          echo dummy-ft/history.db 
           for f in history.db playlists.db profiles.db; do
           test -f dummy-ft/$f || (echo "❌ Missing dummy-ft/$f" && exit 1)
           done
