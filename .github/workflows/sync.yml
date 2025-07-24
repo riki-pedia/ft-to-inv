@@ -38,10 +38,5 @@ jobs:
           done
       - name: Run Invidious sync
         run: |
-          node export.js \
-            --token=${INVIDIOUS_TOKEN} \
-            --instance=${INVIDIOUS_INSTANCE} \
-            --freetube-dir=dummy-ft/ \
-            -v \
-            --dont-run-setup \
-            --export-dir=./exports
+          # one line because node doesn't like multiline commands 
+          node export.js  --token=${INVIDIOUS_TOKEN} --instance=${INVIDIOUS_INSTANCE} --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports
