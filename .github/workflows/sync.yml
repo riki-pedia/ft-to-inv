@@ -35,8 +35,9 @@ jobs:
 
       - name: Run Invidious sync
         run: |
-          node --use-system-ca export.js \
+          node export.js \
             --token="${INVIDIOUS_TOKEN}" \
             --instance="${INVIDIOUS_INSTANCE}" \
-              --freetube-dir=dummy-ft/
-              -v
+            --freetube-dir=dummy-ft/ \
+            -v
+          # forgot it ran on linux
