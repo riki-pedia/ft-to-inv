@@ -173,6 +173,7 @@ async function main() {
     console.error('❌ No token specified.');
     process.exit(1);
   }
+  console.log(`🔗 Using Invidious instance: ${INSTANCE || 'https://invidiou.s'}`);
   if (VERBOSE) {
     console.log('🌐 Instance:', INSTANCE);
     console.log('📂 Paths:');
