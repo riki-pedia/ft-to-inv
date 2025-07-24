@@ -191,9 +191,6 @@ async function main() {
 
 // === sync logic ===
 async function sync() {
-  if (VERBOSE) {
-      console.log(TOKEN);
-    }
     const historyData = await loadNDJSON(HISTORY_PATH);
     const playlistData = await loadNDJSON(PLAYLIST_PATH);
     const subscriptions = await extractSubscriptions(PROFILE_PATH);
