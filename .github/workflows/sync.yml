@@ -39,5 +39,6 @@ jobs:
             --token="${INVIDIOUS_TOKEN}" \
             --instance="${INVIDIOUS_INSTANCE}" \
             --freetube-dir=dummy-ft/ \
-            -v
+            -v \
+            --dont-run-setup \
           # forgot it ran on linux

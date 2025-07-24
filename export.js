@@ -59,12 +59,10 @@ function resolveFlagArg(args, aliases, config, configKey) {
   // Check CLI args: if any alias is present, treat as true
   const cliValue = aliases.some(flag => args.includes(flag));
   if (cliValue) return true;
-
   // If not present in CLI, defer to config file value
   if (config.hasOwnProperty(configKey)) {
     return config[configKey] === true;
   }
-
   return false; // Default fallback
 }
 // function to validate cron strings by checking if they has 5 parts, a number or * in each part, or 1 string
@@ -98,7 +96,8 @@ async function main() {
   const isFirstRun = !fs.existsSync(exportPath) && !fs.existsSync(configPath);
   // Only run setup if truly first time
   let config;
-  if (isFirstRun || FIRST_TIME_SETUP === true) {
+  let dontRunSetup = resolveFlagArg(args, ['--dont-run-setup', '-drs', '--dont-run-first-time-setup'], {}, '');
+  if (isFirstRun || FIRST_TIME_SETUP === true && dontRunSetup !== true) {
     config = await runFirstTimeSetup();
   } else {
     config = loadConfig();
