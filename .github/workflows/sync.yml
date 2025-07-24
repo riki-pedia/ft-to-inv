@@ -3,9 +3,9 @@ name: test the code
 # make sure it isn't complete garbage
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   sync:
