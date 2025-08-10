@@ -4,7 +4,9 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const http = require('http');
 const { loadConfig, normalizePath } = require('./config');
+const { stringify } = require('comment-json');
 let config = loadConfig();
 let OUTPUT_FILE = path.join(config.export_dir || '.', 'invidious-import.json');
 let OLD_EXPORT_PATH = path.join(config.export_dir || '.', 'import.old.json');
@@ -59,20 +61,36 @@ function noSyncWrite(outputObj, outputPath, quiet) {
 let INSECURE = config.insecure || false;
 let INSTANCE = config.instance;
 let TOKEN = config.token;
-// Send a POST request to Invidious API
-function postToInvidious(path, json) {
-  if (!INSECURE) {
+/**
+ * Send a POST request to Invidious API
+ * @param {string} path - The API endpoint path.
+ * @param {object|null} json - The JSON payload to send (or null for no payload).
+ * @param {string} token - The authentication token.
+ * @param {string} instance - The Invidious instance URL.
+ * @param {boolean} insecure - Whether to use HTTP instead of HTTPS (default: false), expects a boolean, usually passed by config or cli arg
+ * @param {string} method - The HTTP method to use (default: 'POST').
+ */
+function postToInvidious(path, json = {}, token, instance, insecure = false, method = 'POST') {
+  const isSecure = !insecure;
+  const client = isSecure ? https : http;
+  const fullPath = `${instance.replace(/\/$/, '')}/api/v1${path}`;
+  const payload = JSON.stringify(json ?? {});
+
   return new Promise((resolve, reject) => {
-    const req = https.request(`${INSTANCE}${path}`, {
-      method: 'POST',
+    const req = client.request(fullPath, {
+      method,
       headers: {
+        'Cookie': `SID=${token}`,
         'Content-Type': 'application/json',
-        'Cookie': `SID=${TOKEN}`
+        'Content-Length': Buffer.byteLength(payload)
       }
     }, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
+        console.log(`Raw response: ${body}
+  data sent: ${payload}
+  path: ${path}`);
         if (res.statusCode >= 400) {
           reject(new Error(`HTTP ${res.statusCode}: ${body}`));
         } else {
@@ -80,61 +98,54 @@ function postToInvidious(path, json) {
         }
       });
     });
-
-    req.on('error', reject);   
-    req.write(JSON.stringify(json));
+    req.on('error', reject);
+    req.write(payload);
     req.end();
-  }
-  )} else if (INSECURE) {
-    return new Promise((resolve, reject) => {
-      try {
-        console.warn(`using port 3000 to connect to ${INSTANCE}${path}`);
-        const req = get(`${INSTANCE.replace(/\/$/, '')}:3000${path}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': `SID=${TOKEN}`
-          }
-        }, res => {
-          let body = '';
-          res.on('data', chunk => body += chunk);
-          res.on('end', () => {
-            if (res.statusCode >= 400) {
-              reject(new Error(`HTTP ${res.statusCode}: ${body}`));
-            } else {
-              resolve({ code: res.statusCode, body });
-            }
-          });
-        });
+  });
+}
 
-        req.end();
-      }
-      catch (err) {
-        const req = get(`${INSTANCE}${path}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': `SID=${TOKEN}`
-          }
-        }, res => {
-          let body = '';
-          res.on('data', chunk => body += chunk);
-          res.on('end', () => {
-            if (res.statusCode >= 400) {
-              reject(new Error(`HTTP ${res.statusCode}: ${body}`));
-            } else {
-              resolve({ code: res.statusCode, body });
-            }
-          });
-        });
-        req.on('error', reject);
-        req.end();
-      }
-   } )}
-  }
+/**
+ * Writes a standalone playlist-import.json file for Invidious
+ * @param {Array} playlists - Array of playlists in your format:
+ * [
+ *   {
+ *     title: "My Playlist",
+ *     description: "",
+ *     privacy: "Private",
+ *     videos: ["abc123", "def456"]
+ *   },
+ *   ...
+ * ]
+ * @param {string} outputPath - Where to write the file:
+ * defaults to './playlist-import.json'
+ */
+function writePlaylistImport(playlists, outputPath = './playlist-import.json') {
+  const minimalImport = {
+    version: 1,
+    subscriptions: [],
+    watch_history: [],
+    preferences: {
+      default_home: "Subscriptions",
+      annotations: false,
+      autoplay: false,
+      dark_mode: "true",
+      region: "US",
+      quality: "dash",
+      player_style: "youtube",
+      watch_history: true,
+      max_results: 40
+    },
+    playlists
+  };
+
+  fs.writeFileSync(outputPath, JSON.stringify(minimalImport, null, 2));
+  console.log(`✅ Playlist import written to ${outputPath}`);
+}
 
 // Fetch channel metadata to get friendly name
-async function getChannelName(ucid) {
+async function getChannelName(ucid, instance = INSTANCE) {
   try {
-    const url = new URL(`/api/v1/channels/${ucid}`, INSTANCE).href;
+    const url = new URL(`/api/v1/channels/${ucid}`, instance).href;
     const res = await fetch(url, { headers:  {
         'Content-Type': 'application/json',
         'Cookie': `SID=${TOKEN}`
@@ -143,7 +154,7 @@ async function getChannelName(ucid) {
     const data = await res.json();
     return data.author || ucid;
   } catch (err) {
-    if (VERBOSE) console.warn(`⚠️ Failed to get channel name for ${ucid}:`, err.message);
+     console.warn(`⚠️ Failed to get channel name for ${ucid}:`, err.message);
     return ucid; // Fallback to ID if failed
   }
 }
@@ -156,4 +167,5 @@ module.exports = {
   noSyncWrite,
   postToInvidious,
   getChannelName,
+  writePlaylistImport
 };

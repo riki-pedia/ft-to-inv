@@ -1,11 +1,9 @@
-# .github/workflows/invidious-sync.yml
 name: test the code
-# make sure it isn't complete garbage
 on:
   push:
-    branches: [master]
+    branches: [master, main]
   pull_request:
-    branches: [master]
+    branches: [master, main]
 
 jobs:
   sync:
@@ -22,9 +20,13 @@ jobs:
         with:
           node-version: '18.x'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
+      - name: Start mock Invidious server
+        run: |
+          node .github/test/mock-invidious.js &
+          sleep 3 # wait for server to start
       - name: Create dummy freetube files
         run: |
           mkdir -p ./dummy-ft
@@ -32,11 +34,11 @@ jobs:
           # this is to ensure that the export script doesn't fail due to missing files
           cp .github/test/*.db ./dummy-ft/
           mkdir -p ./exports
-          
+          # assurance
           for f in history.db playlists.db profiles.db; do
           test -f dummy-ft/$f || (echo "❌ Missing dummy-ft/$f" && exit 1)
           done
+          sleep 1
       - name: Run Invidious sync
         run: |
-          node export.js  --token=${{ secrets.INVIDIOUS_TOKEN }} --instance=${{ secrets.INVIDIOUS_INSTANCE }} --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports
-          # one line because node doesn't like multiline commands
+          node export.js --token=${{ secrets.INVIDIOUS_TOKEN }} -i http://localhost:9999 --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports --insecure

@@ -14,12 +14,19 @@ const getArg = (name, fallback = null) => {
   }
   return fallback;
 };
-
+/**
+ * Get the value of an environment variable.
+ * @param {string} option - The name of the environment variable to retrieve.
+ * @returns {string|undefined} - The value of the environment variable, or undefined if not set.
+ */
+function getEnv(option) {
+  return process.env[option] || undefined;
+}
 // ==== Defaults ====
 const DEFAULT_CONFIG_FILENAME = 'ft-to-inv.jsonc';
 
 // ==== ENV ====
-const ENV_CONFIG_PATH = process.env.FT_INV_CONFIG;
+const ENV_CONFIG_PATH = normalizePath(getEnv('FT_INV_CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG')) || normalizePath(getEnv('CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG_PATH'));
 
 // args parsed in export.js
 function detectOs() {
@@ -71,10 +78,6 @@ function normalizePath(inputPath) {
 function resolvePaths(config) {
   const base = normalizePath(config.freetube_dir || getDefaultFreeTubeDir() || '');
   const exportDir = normalizePath(config.export_dir || '.');
-  console.log(`
-    This message is called in config.js at line ~74 under resolvePaths function.
-    Resolving paths with base: ${base}, exportDir: ${exportDir}
-    `);
   return {
     HISTORY_PATH: path.join(base, 'history.db'),
     PLAYLIST_PATH: path.join(base, 'playlists.db'),
@@ -110,7 +113,7 @@ const defaultConfig = {
 //comments at the top of the file
 const topComments = [
   'This is the configuration file for the FreeTube to Invidious exporter.',
-  'You can edit this file to change the default settings.',
+  'You can edit this file to change the settings, but please follow the format carefully.',
   'You can also run the script with --config <path> to specify a different config file.',
   'Here\'s what an example entry looks like:',
   '"token": "your_token_here",',
@@ -191,12 +194,13 @@ const comments = {
       'This is insecure and should only be used if you know what you\'re doing',
       'You can also specify this with --insecure',
       'This is useful for self-hosted instances on default configurations',
+      'when you run first-time setup, this adapts based on the instance you entered',
     ],
     "quiet": [
       'Accepted values: true or false',
       'Suppress all non-error output?',
       'This will hide all output from the script, including errors',
-      'You can also specify this with --quiet',
+      'You can also specify this with --quiet, see help for aliases',
     ],
     // we have the comments, now we just need to add them to the config object
   };
@@ -220,13 +224,24 @@ function renderConfigWithComments(config, comments, topComments = []) {
   lines.push('}');
   return lines.join('\n');
 }
+/**
+ * Detect if a URL is using HTTPS or HTTP, and set config flags accordingly.
+ * @param {string} url - The URL, including the protocol (http or https).
+ * @returns {value} - The value of the insecure flag, either true or false.
+ * we can use this function to detect the protocol, and set config flags like INSECURE accordingly
+ */
+let insecure = false;
+function detectHttps(url) {
+  if (url.startsWith('http://')) return (insecure = true);
+  return false;
+}
 // ==== FIRST-TIME SETUP INTERACTIVE PROMPT ====
 async function runFirstTimeSetup() {
   
   console.log('\n🛠 First-time setup: Let\'s configure your FreeTube → Invidious sync');
 
   const token = await prompt('Enter your Invidious token (SID cookie)');
-  const instance = await prompt('Enter the Invidious instance URL', 'https://invidiou.s');
+  const instance = await prompt('Enter the Invidious instance URL', 'https://invidious.example.com');
   const ftDir = await prompt('Enter your FreeTube data directory', getDefaultFreeTubeDir());
   const exportDir = await prompt('Enter the export output directory', './');
 
@@ -238,6 +253,8 @@ async function runFirstTimeSetup() {
 
   let ftDirNormalized = normalizePath(ftDir);
   let exportDirNormalized = normalizePath(exportDir);
+   
+  detectHttps(instance)
 
   const config = {
     "token": token,
@@ -246,7 +263,8 @@ async function runFirstTimeSetup() {
     "export_dir": exportDirNormalized,
     "verbose": verbose,
     "dry_run": dryRun,
-    "dont_shorten_paths": dontShorten
+    "dont_shorten_paths": dontShorten,
+    "insecure": insecure || false
   };
   
   const mergedConfig = {
@@ -268,13 +286,14 @@ async function runFirstTimeSetup() {
 
 // ==== MAIN LOAD FUNCTION ====
 function loadConfig() {
-  const configArg = getArg('--config') || getArg('-c');
+  let config
+  const configArg = getArg('--config') || getArg('-c') || getArg('-conf');
   const configPath =
     configArg ||
     ENV_CONFIG_PATH ||
     path.resolve(DEFAULT_CONFIG_FILENAME);
-
-  const fileConfig = fs.existsSync(configPath) ? loadJsonc(configPath) : {};
+   config = configArg ? configArg : configPath;
+  const fileConfig = fs.existsSync(config) ? loadJsonc(config) : {};
   const merged = { ...fileConfig };
 
   return merged;
@@ -287,4 +306,5 @@ module.exports = {
   resolvePaths,
   normalizePath,
   getDefaultFreeTubeDir,
+  getEnv,
 };

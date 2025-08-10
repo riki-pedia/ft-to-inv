@@ -1,10 +1,14 @@
-#!/usr/bin/env node
-
-// === export.js ===
-// Main CLI entrypoint: bootstraps config, sets up paths, then runs sync()
+// main entrypoint, parses cli args and starts sync
+// the command to run this is not that pretty
+// node [--use-system-ca] export.js [flags]
+// not gonna talk about use system ca, see help or config
+// gets values in this order:
+// cli args > env > config
+// you can preface env with FT_INV_CONFIG_OPTION, where option is the cli flag you want to pass
+// for example: set FT_TO_INV_CONFIG_INSTANCE=https://invidous.example.com sets the instance flag to be https://invidious.example.com
 const fs = require('fs');
 const path = require('path');
-const { loadConfig, runFirstTimeSetup, getDefaultFreeTubeDir, normalizePath } = require('./config');
+const { loadConfig, runFirstTimeSetup, getDefaultFreeTubeDir, normalizePath, getEnv } = require('./config');
 const {
   loadNDJSON,
   extractSubscriptions,
@@ -12,7 +16,8 @@ const {
   writeNewExport,
   noSyncWrite,
   postToInvidious,
-  getChannelName
+  getChannelName,
+  writePlaylistImport
 } = require('./utils');
 const cron = require('node-cron');
 
@@ -36,6 +41,30 @@ const getArg = (name, fallback = null) => {
   }
   return fallback;
 };
+/**
+ * Resolves environment variables from the process.env object.
+ * Intended for use of bulk resolution of environment variables.
+ * Or if there's multiple aliases for the same config option.
+ * @param {array<string>} env - An array of environment variable names to resolve.
+ * @returns {string|undefined} - The value of the first found environment variable, or an empty variable if none are found.
+ */
+function resolveEnvVars(env = []) {
+  let resolved = undefined;
+  for (const key of env) {
+    const value = process.env[key];
+    if (value !== undefined) {
+      resolved = getEnv(key);
+      break; // Stop at the first found environment variable
+    }
+  }
+  return resolved;
+}
+function sanitizeEnvBoolean(value) {
+    if (typeof value !== 'boolean') {
+        return false;
+    }
+    return value;
+}
 
 // -- Globals (to be assigned in bootstrap) --
 let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE, DONT_SHORTEN_PATHS;
@@ -53,13 +82,16 @@ let EXPORT_DIR
  * @param {string[]} aliases - List of CLI flags to check (e.g., ['--dry-run']).
  * @param {object} config - Parsed config object.
  * @param {string} configKey - Key in the config file (e.g., 'dry_run').
+ * @param {string} envKey - Key in the environment variables (e.g., 'FT_TO_INV_CONFIG_DRY_RUN').
  * @returns {boolean} - Resolved boolean value.
  */
-function resolveFlagArg(args, aliases, config, configKey) {
+function resolveFlagArg(args, aliases, config, configKey, envKey) {
   // Check CLI args: if any alias is present, treat as true
   const cliValue = aliases.some(flag => args.includes(flag));
   if (cliValue) return true;
-  // If not present in CLI, defer to config file value
+  // If not present in CLI, defer to env then config
+  const envVal = resolveEnvVars(envKey);
+  if (envVal !== undefined) return sanitizeEnvBoolean(envVal);
   if (config.hasOwnProperty(configKey)) {
     return config[configKey] === true;
   }
@@ -80,6 +112,9 @@ function stripDir(p) {
     const norm = toUnix(path.resolve(p));
     const ft = toUnix(path.resolve(FREETUBE_DIR));
     const ex = toUnix(path.resolve(EXPORT_DIR));
+    if (ft === ex) {
+      console.warn('⚠️ Warning: FreeTube directory and export directory are the same, path shortening may be ambiguous.');
+    }
     if (norm.startsWith(ft)) return norm.replace(ft, '<FreeTubeDir>');
     if (norm.startsWith(ex)) return norm.replace(ex, '<ExportDir>');
     return norm; 
@@ -89,9 +124,9 @@ async function main() {
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts'], {}, '');
-  const ENV_CONFIG_PATH = process.env.FT_TO_INV_CONFIG || process.env.FT_TO_INV_CONFIG_PATH || process.env.FT_INV_CONFIG || process.env.CONFIG;
+  const ENV_CONFIG_PATH = normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG', 'FT_TO_INV_CONFIG_PATH', 'FT_INV_CONFIG', 'CONFIG']));
   // we parse configPath in config.js, but this gets used for checking if it's the first run
-  const configPath = getArg('--config') || getArg('-c') || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
+  const configPath = normalizePath(getArg('--config')) || normalizePath(getArg('-c')) || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
   const exportPath = path.join('./', 'invidious-import.json'); // default export path for first-run check
   const isFirstRun = !fs.existsSync(exportPath) && !fs.existsSync(configPath);
   // Only run setup if truly first time
@@ -105,27 +140,28 @@ async function main() {
   // Load/merge CLI args + config file
   // Detect first-run (no config file or no prior export)
   // Assign globals from config
-  EXPORT_DIR = normalizePath(getArg('--export-dir')) || normalizePath(getArg('-e')) || normalizePath(config.export_dir) || normalizePath('.');
-  FREETUBE_DIR = normalizePath(getArg('--freetube-dir')) || normalizePath(getArg('-f')) || normalizePath(getArg('-cd')) || normalizePath(config.freetube_dir) || getDefaultFreeTubeDir();
+  EXPORT_DIR = normalizePath(getArg('--export-dir')) || normalizePath(getArg('-e')) || normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG_EXPORT_DIR', 'EXPORT_DIR', 'FT_TO_INV_EXPORT_DIR'])) || normalizePath(config.export_dir) ||  normalizePath('.');
+  FREETUBE_DIR = normalizePath(getArg('--freetube-dir')) || normalizePath(getArg('-f')) || normalizePath(getArg('-cd')) || normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'])) || normalizePath(config.freetube_dir) || getDefaultFreeTubeDir();
   // these files are always those names, not taking args for them
+  // if theyre different make a symlink ig
   PROFILE_PATH = path.join(FREETUBE_DIR, 'profiles.db');
   HISTORY_PATH = path.join(FREETUBE_DIR, 'history.db');
   PLAYLIST_PATH = path.join(FREETUBE_DIR, 'playlists.db');
-  // strings in cli, not boolean flags
-  TOKEN              = getArg('--token') || getArg('-t')|| config.token;
-  INSTANCE           = getArg('--instance') || getArg('-i') || config.instance;
+  // this is a mess, if you can think of anything better for this pls open a pr
+  TOKEN              = getArg('--token') || getArg('-t')|| resolveEnvVars(['FT_TO_INV_TOKEN', 'TOKEN', 'FT_TO_INV_CONFIG_TOKEN']) || config.token;
+  INSTANCE           = getArg('--instance') || getArg('-i') || resolveEnvVars(['FT_TO_INV_INSTANCE', 'INSTANCE', 'FT_TO_INV_CONFIG_INSTANCE']) || config.instance;
 
-  VERBOSE            = resolveFlagArg(args, ['--verbose', '-v'], config, 'verbose')
-  DRY_RUN            = resolveFlagArg(args, ['--dry-run'], config, 'dry_run')
-  QUIET              = resolveFlagArg(args, ['--quiet','-q'], config, 'quiet');
-  INSECURE           = resolveFlagArg(args, ['--insecure'], config, 'insecure');
-  NOSYNC             = resolveFlagArg(args, ['--no-sync'], config, 'no_sync');
-  DONT_SHORTEN_PATHS = resolveFlagArg(args, ['--dont-shorten-paths'], config, 'dont_shorten_paths');
+  VERBOSE            = resolveFlagArg(args, ['--verbose', '-v'], config, 'verbose', ['FT_TO_INV_CONFIG_VERBOSE', 'VERBOSE', 'FT_TO_INV_VERBOSE'])
+  DRY_RUN            = resolveFlagArg(args, ['--dry-run'], config, 'dry_run', ['FT_TO_INV_CONFIG_DRY_RUN', 'DRY_RUN', 'FT_TO_INV_DRY_RUN'])
+  QUIET              = resolveFlagArg(args, ['--quiet','-q'], config, 'quiet', ['FT_TO_INV_CONFIG_QUIET', 'QUIET', 'FT_TO_INV_QUIET'])
+  INSECURE           = resolveFlagArg(args, ['--insecure'], config, 'insecure', ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'])
+  NOSYNC             = resolveFlagArg(args, ['--no-sync'], config, 'no_sync', ['FT_TO_INV_CONFIG_NO_SYNC', 'NOSYNC', 'FT_TO_INV_NOSYNC'])
+  DONT_SHORTEN_PATHS = resolveFlagArg(args, ['--dont-shorten-paths'], config, 'dont_shorten_paths', ['FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS', 'DONT_SHORTEN_PATHS', 'FT_TO_INV_DONT_SHORTEN_PATHS'])
 
   OUTPUT_FILE        = exportPath || path.join(EXPORT_DIR, 'invidious-import.json');
   OLD_EXPORT_PATH    = path.join(EXPORT_DIR, 'import.old.json');
   // -c is for config
-  CRON_SCHEDULE      = getArg('--cron-schedule') || getArg('-cron') || getArg('--cron') || config.cron_schedule || '';
+  CRON_SCHEDULE      = getArg('--cron-schedule') || getArg('-cron') || getArg('--cron') || resolveEnvVars(['FT_TO_INV_CONFIG_CRON_SCHEDULE', 'CRON_SCHEDULE', 'FT_TO_INV_CRON_SCHEDULE', 'CRON']) || config.cron_schedule || '';
 
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {
@@ -157,39 +193,66 @@ async function main() {
     Note: If you self-host Invidious with a custom TLS certificate, make sure to run with --use-system-ca.
     If you're on linux, node doesn't support --use-system-ca, but trust the system store by default.
     If you get TLS errors, try setting NODE_EXTRA_CA_CERTS=/path/to/your/rootCA.crt
-    You can also copy your self-signed cert to /usr/local/share/ca-certificates/ and run sudo update-ca-certificates`
+    You can also copy your self-signed cert to /usr/local/share/ca-certificates/ and run sudo update-ca-certificates
+     ENVIRONMENT VARIABLES:
+     - FT_TO_INV_CONFIG_TOKEN: Your Invidious SID cookie for authentication.
+     - FT_TO_INV_CONFIG_INSTANCE: Your Invidious instance URL.
+     - FT_TO_INV_CONFIG_FREETUBE_DIR: Path to FreeTube data directory.
+     - FT_TO_INV_CONFIG_EXPORT_DIR: Directory to write the export file to.
+     - FT_TO_INV_CONFIG_OUTPUT_FILE: Name of the output file.
+     - FT_TO_INV_CONFIG_CRON_SCHEDULE: A cron pattern to run the sync on a schedule.
+     - FT_TO_INV_CONFIG_DRY_RUN: Run the script without making any changes.
+     - FT_TO_INV_CONFIG_VERBOSE: Enable verbose logging.
+     - FT_TO_INV_CONFIG_NO_SYNC: Skip the sync to Invidious step.
+     - FT_TO_INV_CONFIG_QUIET: Suppress non-error console output.
+     - FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS: Don't show shortened paths for files.
+     How they work:
+     The environment variables are 2nd order in runtime config, so the order looks like this
+     CLI ARGS > ENVIRONMENT VARIABLES > CONFIG (defaults)
+     Any of the config options have an environment variable equivalent, and they all start with FT_TO_INV_CONFIG_.
+     Here's an example:
+     FT_TO_INV_CONFIG_TOKEN=abc123
+
+     `
   )
   process.exit(0);
   }
   // Validate required files
   for (const f of [HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH]) {
     if (!fs.existsSync(f)) {
-      console.log(HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH, EXPORT_DIR, OLD_EXPORT_PATH, FREETUBE_DIR);
+      console.log(HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH, EXPORT_DIR, OLD_EXPORT_PATH, FREETUBE_DIR, '(logged for debugging)');
       console.error(`❌ Required file missing: ${f}`);
       process.exit(1);
     }
   }
-  if (!TOKEN && !DRY_RUN) {
+  if (!TOKEN && !DRY_RUN && !NOSYNC) {
     console.error('❌ No token specified.');
     process.exit(1);
   }
-  console.log(`🔗 Using Invidious instance: ${INSTANCE || 'https://invidiou.s'}`);
   if (VERBOSE) {
     console.log('🌐 Instance:', INSTANCE);
     console.log('📂 Paths:');
-    console.log(`   FreeTube data directory: ${FREETUBE_DIR}, ${config.freetube_dir}, ${EXPORT_DIR}`);
-    console.log(`   Export directory: ${EXPORT_DIR}, ${config.freetube_dir}, ${EXPORT_DIR}`);
+    console.log(`   FreeTube data directory: ${FREETUBE_DIR}`);
+    console.log(`   Export directory: ${EXPORT_DIR}`);
     console.log(`   History: ${stripDir(HISTORY_PATH)}`);
     console.log(`   Playlists: ${stripDir(PLAYLIST_PATH)}`);
     console.log(`   Profiles: ${stripDir(PROFILE_PATH)}`);
     console.log(`   Export → ${stripDir(OUTPUT_FILE)}`);
     console.log(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`);
-  }// stripDir only takes one arg
+  }
 
   // Now call sync
   await sync();
 }
-
+function certErrorHint(err) {
+  const message = String(err).toLowerCase();
+      // node errors like UNABLE_TO_VERIFY_LEAF_SIGNATURE don't get included in the error object, this is all we get, but the full error is in the console
+      // error: unable to verify the first certificate; if the root ca is installed locally, try running node.js with --use-system-ca
+      if (message.includes("unable to verify the first certificate")) {
+      console.error('⚠️ This may be due to an invalid or self-signed certificate. Try running with --use-system-ca or setting the NODE_EXTRA_CA_CERTS environment variable.');
+      }
+      else return;
+    }
 // === sync logic ===
 async function sync() {
     const historyData = await loadNDJSON(HISTORY_PATH);
@@ -230,16 +293,25 @@ async function sync() {
     };
 
   const old = readOldExport();
+  const safeOldPlaylists = (old.playlists || []).filter(
+  op => op && typeof op.title === 'string' && Array.isArray(op.videos)
+);
+const safeNewPlaylists = (output.playlists || []).filter(
+  p => p && typeof p.title === 'string' && Array.isArray(p.videos)
+);
+const newPlaylists = safeNewPlaylists.filter(
+  p => !safeOldPlaylists.some(
+    op => op.title === p.title && JSON.stringify(op.videos) === JSON.stringify(p.videos)
+  )
+);
+const removedPlaylists = safeOldPlaylists.filter(
+  op => !safeNewPlaylists.some(p => p.title === op.title)
+);
     const newHistory = output.watch_history.filter(id => !old.watch_history.includes(id));
     const newSubs = output.subscriptions.filter(id => !old.subscriptions.includes(id));
-    const newPlaylists = output.playlists.filter(p => !old.playlists.some(op => op.title === p.title && JSON.stringify(op.videos) === JSON.stringify(p.videos)));
 
     const removedHistory = old.watch_history.filter(id => !output.watch_history.includes(id));
     const removedSubs = old.subscriptions.filter(id => !output.subscriptions.includes(id));
-    const removedPlaylists = old.playlists.filter(op =>
-     !output.playlists.some(p => p.title === op.title)
-);
-
 
     var useSVideo = newHistory.length !== 1 ? "s" : "";
     var useSSub = newSubs.length !== 1 ? "s" : "";
@@ -255,10 +327,10 @@ async function sync() {
       console.log(`Found ${newSubs.length} new subscription${useSSub} to sync`);
       console.log(`Found ${newPlaylists.length} new playlist${useSPlaylist} to sync`);
       if (removedHistory.length) {
-        console.log(`Found ${removedHistory.length} watched video${removedHistory.length !== 1 ? 's' : ''} to remove from watch history`);
+        console.log(`Found ${removedHistory.length} video${removedHistory.length !== 1 ? 's' : ''} to remove from watch history`);
       }
       if (removedSubs.length) {
-        console.log(`Found ${removedSubs.length} subscription${removedSubs.length !== 1 ? 's' : ''} to unsubscribe from`);
+        console.log(`Found ${removedSubs.length} channel${removedSubs.length !== 1 ? 's' : ''} to unsubscribe from`);
       }
       if (removedPlaylists.length) {
         console.log(`Found ${removedPlaylists.length} playlist${removedPlaylists.length !== 1 ? 's' : ''} to delete`);
@@ -269,12 +341,7 @@ async function sync() {
     const markError = (label, error) => {
       hadErrors = true;
       console.error(`❌ ${label}:`, error);
-      const message = String(error).toLowerCase();
-      // node errors like UNABLE_TO_VERIFY_LEAF_SIGNATURE don't get included in the error object, this is all we get, but the full error is in the console
-      // error: unable to verify the first certificate; if the root ca is installed locally, try running node.js with --use-system-ca
-      if (message.includes("unable to verify the first certificate")) {
-      console.error('⚠️ This may be due to an invalid or self-signed certificate. Try running with --use-system-ca or setting the NODE_EXTRA_CA_CERTS environment variable.');
-      }
+      certErrorHint(error);
     };
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
@@ -282,20 +349,23 @@ async function sync() {
         return;
       }
       if (newHistory.length) {
-      try {
-        const res = await postToInvidious('/watch_history', newHistory);
-        if (!QUIET) {
-        console.log(`✅ Synced ${newHistory.length} new watched video${useSVideo} (HTTP ${res.code})`);
-        }
-        } catch (err) {
+      for (const videoId of newHistory) {
+       try {
+       console.log(videoId)
+       const res = await postToInvidious(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
+       if (!QUIET) {
+       console.log(`✅ Marked ${videoId} as watched (HTTP ${res.code})`);
+       }
+      }
+      catch (err) {
         markError('Failed to sync watch history', err);
       }
     }
-
+  }
     for (const sub of newSubs) {
       try {
-        const res = await postToInvidious('/subscribe_ajax', { action: 'subscribe', ucid: sub });
-        const name = await getChannelName(sub);
+        const res = await postToInvidious(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
+        const name = await getChannelName(sub, INSTANCE);
         if (!QUIET) {
           console.log(`📺 Subscribed to ${name} (${sub}) with HTTP ${res.code}`);
         }
@@ -303,37 +373,62 @@ async function sync() {
         markError(`Failed to subscribe to ${sub}`, err);
       }
     }
+ const playlistsToImport = [];
+// console.log(`found ${pl} and ${pl.title}`)
+const oldPlaylistTitles = new Set(
+  (old.playlists || [])
+    .filter(pl => pl && typeof pl.title === 'string' && pl.title.trim() !== '')
+    .map(pl => pl.title.toLowerCase())
+);
 
-    const oldPlaylistTitles = new Set(old.playlists.map(p => p.title));
-    for (const pl of newPlaylists) {
-      if (oldPlaylistTitles.has(pl.title)) {
-        console.log(`ℹ️ Skipping existing playlist: "${pl.title}"`);
-        continue;
-      }
-      try {
-        const res = await postToInvidious('/playlists/create', pl);
-        console.log(`🎵 Created playlist "${pl.title}" (HTTP ${res.code})`);
-      } catch (err) {
-        markError(`Failed to create playlist "${pl.title}"`, err);
-      }
-    }
-   
-    // Remove watched videos
+try {
+for (const pl of newPlaylists) {
+  if (!pl || typeof pl.title !== 'string') {
+    console.warn(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`);
+    continue;
+  }
+  console.log(`ℹ️ Found new playlist: "${pl.title}"`);
+  if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
+    console.log(`ℹ️ Skipping existing playlist: "${pl.title}"`);
+    continue;
+  }
+  // Add to playlist import structure
+  playlistsToImport.push({
+    title: pl.title,
+    description: pl.description,
+    privacy: pl.privacy ?? 'Private',
+    videos: pl.videos
+  });
+  console.log(`🎵 Queued playlist "${pl.title}" for import, \n you will need to import it manually into Invidious. \n Head to Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file.`);
+
+}
+if (playlistsToImport.length > 0) {
+  const importPath = './playlist-import.json';
+  writePlaylistImport(playlistsToImport, importPath);
+  console.log(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`);
+} else {
+  console.log(`✅ No new playlists to import`);
+}
+} catch (err) {
+  markError('Failed to prepare playlist import', err);
+}   
+// Remove watched videos
     if (removedHistory.length) {
-     try {
-      const res = await postToInvidious('/watch_history/delete', removedHistory);
+     for (const videoId of removedHistory) {
+      try {
+      const res = await postToInvidious(`/auth/history/${videoId}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
-      console.log(`🗑️ Removed ${removedHistory.length} video${removedHistory.length !== 1 ? 's' : ''} from watch history (HTTP ${res.code})`);
+      console.log(`🗑️ Removed ${videoId} from watch history (HTTP ${res.code})`);
       }
      } catch (err) {
        markError('Failed to remove from watch history', err);
       }
     }
-
+  }
     // Unsubscribe from channels
     for (const ucid of removedSubs) {
      try {
-      const res = await postToInvidious('/subscribe_ajax', { action: 'unsubscribe', ucid });
+      const res = await postToInvidious(`/auth/subscriptions/${ucid}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
        console.log(`👋 Unsubscribed from ${ucid} (HTTP ${res.code})`);
       }
@@ -343,16 +438,23 @@ async function sync() {
     }
 
     // Delete playlists
-    for (const op of removedPlaylists) {
-     try {
-      const res = await postToInvidious('/playlists/delete', { title: op.title });
-      if (!QUIET) {
-       console.log(`🗑️ Deleted playlist "${op.title}" (HTTP ${res.code})`);
-      }
-    } catch (err) {
-      markError(`Failed to delete playlist "${op.title}"`, err);
-    }
-   }
+// Remove deleted playlists from playlist-import.json
+const importPath = './playlist-import.json';
+if (removedPlaylists.length > 0 && fs.existsSync(importPath)) {
+  try {
+    const importData = JSON.parse(fs.readFileSync(importPath, 'utf-8'));
+    
+    // Filter out any playlists matching removed titles (case-insensitive)
+    importData.playlists = importData.playlists.filter(pl =>
+      !removedPlaylists.some(rp => rp.title.toLowerCase() === pl.title.toLowerCase())
+    );
+
+    fs.writeFileSync(importPath, JSON.stringify(importData, null, 2));
+    console.log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`);
+  } catch (err) {
+    markError(`Failed to update ${importPath} after removals`, err);
+  }
+}
     
     if (!hadErrors) {
       writeNewExport(output);
@@ -367,7 +469,7 @@ async function sync() {
     }
   } else {
      if (!hadErrors) {
-      noSyncWrite(output);
+      noSyncWrite(output, OUTPUT_FILE, QUIET);
       }
     else {
       console.warn('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.');
