@@ -23,10 +23,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-      - name: Start mock Invidious server
-        run: |
-          node .github/test/mock-invidious.js &
-          sleep 3 # wait for server to start
       - name: Create dummy freetube files
         run: |
           mkdir -p ./dummy-ft
@@ -39,6 +35,11 @@ jobs:
           test -f dummy-ft/$f || (echo "❌ Missing dummy-ft/$f" && exit 1)
           done
           sleep 1
-      - name: Run Invidious sync
+      - name: Run Invidious sync and setup webserver
         run: |
-          node export.js --token=${{ secrets.INVIDIOUS_TOKEN }} -i http://127.0.0.1:9999 --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports --insecure & sleep 2
+          node .github/test/mock-invidious.js &
+          MOCK_PID=$! & sleep 2
+          node export.js --token=${{ secrets.INVIDIOUS_TOKEN }} -i http://127.0.0.1:9999 --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports --insecure
+          kill $MOCK_PID
+          sleep 1
+          # give time to finish
