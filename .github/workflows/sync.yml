@@ -8,9 +8,6 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    env:
-      INVIDIOUS_TOKEN: ${{ secrets.INVIDIOUS_TOKEN }}
-      INVIDIOUS_INSTANCE: ${{ secrets.INVIDIOUS_INSTANCE }}
     steps:
       - name: 🚧 Checkout code
         uses: actions/checkout@v4

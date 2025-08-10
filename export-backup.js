@@ -8,6 +8,9 @@
 // this isn't a very pretty script, but it works.
 // usage: node --use-system-ca export.js --token YOUR_INVIDIOUS_SID_COOKIE 
 // i might make this command look better later, maybe npx or something like that
+// ===== THIS SCRIPT IS NO LONGER MAINTAINED =====
+// use export.js instead
+// this is just a bacckup so i dont lose full functionality
 const https = require('https');
 const path = require('path');
 const { argv } = require('process');
@@ -715,7 +718,7 @@ async function sync() {
 if (CRON_SCHEDULE) {
   console.log(`🕒 Scheduling sync with cron pattern: ${CRON_SCHEDULE}`);
   console.log('Press Ctrl+C to exit.');
-  console.log("syncing now...")
+  console.log("syncing now...");
   sync().catch(err => console.error('❌ Initial sync failed:', err));
   cron.schedule(CRON_SCHEDULE, () => {
     console.log(`🕒 Running scheduled sync at ${new Date().toLocaleString()}`);
