@@ -88,9 +88,6 @@ function postToInvidious(path, json = {}, token, instance, insecure = false, met
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
-        console.log(`Raw response: ${body}
-  data sent: ${payload}
-  path: ${path}`);
         if (res.statusCode >= 400) {
           reject(new Error(`HTTP ${res.statusCode}: ${body}`));
         } else {

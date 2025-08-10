@@ -60,10 +60,21 @@ function resolveEnvVars(env = []) {
   return resolved;
 }
 function sanitizeEnvBoolean(value) {
-    if (typeof value !== 'boolean') {
+    if (value === null || value === undefined) {
         return false;
+    }  
+    if (typeof value === 'boolean') {
+        return true;
     }
-    return value;
+    if (typeof value === 'string') {
+        return value.toLowerCase() === 'true';
+    }
+    if (typeof value === 'number') {
+        if (value !== 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // -- Globals (to be assigned in bootstrap) --
@@ -82,7 +93,7 @@ let EXPORT_DIR
  * @param {string[]} aliases - List of CLI flags to check (e.g., ['--dry-run']).
  * @param {object} config - Parsed config object.
  * @param {string} configKey - Key in the config file (e.g., 'dry_run').
- * @param {string} envKey - Key in the environment variables (e.g., 'FT_TO_INV_CONFIG_DRY_RUN').
+ * @param {string[]} envKey - Key in the environment variables (e.g., 'FT_TO_INV_CONFIG_DRY_RUN').
  * @returns {boolean} - Resolved boolean value.
  */
 function resolveFlagArg(args, aliases, config, configKey, envKey) {
@@ -123,7 +134,7 @@ function stripDir(p) {
 async function main() {
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
-  FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts'], {}, '');
+  FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
   const ENV_CONFIG_PATH = normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG', 'FT_TO_INV_CONFIG_PATH', 'FT_INV_CONFIG', 'CONFIG']));
   // we parse configPath in config.js, but this gets used for checking if it's the first run
   const configPath = normalizePath(getArg('--config')) || normalizePath(getArg('-c')) || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
@@ -131,7 +142,10 @@ async function main() {
   const isFirstRun = !fs.existsSync(exportPath) && !fs.existsSync(configPath);
   // Only run setup if truly first time
   let config;
-  let dontRunSetup = resolveFlagArg(args, ['--dont-run-setup', '-drs', '--dont-run-first-time-setup'], {}, '');
+  let dontRunSetup = resolveFlagArg(args, ['--dont-run-setup', '-drs', '--dont-run-first-time-setup'], {}, '', ['DONT_RUN_SETUP', 'FT_TO_INV_CONFIG_DONT_RUN_SETUP', 'FT_TO_INV_CONFIG_DONT_RUN_FIRST_TIME_SETUP', 'FT_TO_INV_DRS', 'DRS']);
+  if (dontRunSetup === true) {
+    console.warn('⚠️ Warning: Skipping setup due to setting DONT_RUN_SETUP');
+  }
   if ((isFirstRun && dontRunSetup !== true) || FIRST_TIME_SETUP === true) {
     config = await runFirstTimeSetup();
   } else {

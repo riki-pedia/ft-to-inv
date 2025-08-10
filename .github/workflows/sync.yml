@@ -36,11 +36,22 @@ jobs:
           done
           sleep 1
       - name: Run Invidious sync and setup webserver
+        env:
+          MOCK_PORT: 9999
+          INSTANCE: http://127.0.0.1:9999
+          # doesnt matter, we have a fake server
+          # should probably sanitize this actually
+          TOKEN: a
+          EXPORT_DIR: ./exports
+          FREETUBE_DIR: ./dummy-ft
+          VERBOSE: true
+          INSECURE: true
+          DONT_RUN_SETUP: true
         run: |
           node .github/test/mock-invidious.js &
           MOCK_PID=$!
           sleep 2
-          node export.js --token=${{ secrets.INVIDIOUS_TOKEN }} -i http://127.0.0.1:9999 --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports --insecure
+          node export.js
           kill $MOCK_PID
           sleep 1
           # give time to finish
