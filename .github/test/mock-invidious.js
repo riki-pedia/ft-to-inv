@@ -35,7 +35,7 @@ const server = http.createServer((req, res) => {
     // Simulate channel retrieval
     const channelId = req.url.split('/').pop();
     res.statusCode = 200;
-    res.end(JSON.stringify({ id: channelId, name: `Channel ${channelId}` }));
+    return res.end(JSON.stringify({ name: `Channel ${channelId}` }));
   }
   // no actual playlist api in invidious, so we dont simulate it
   

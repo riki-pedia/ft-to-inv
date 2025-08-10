@@ -38,7 +38,8 @@ jobs:
       - name: Run Invidious sync and setup webserver
         run: |
           node .github/test/mock-invidious.js &
-          MOCK_PID=$! & sleep 2
+          MOCK_PID=$!
+          sleep 2
           node export.js --token=${{ secrets.INVIDIOUS_TOKEN }} -i http://127.0.0.1:9999 --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports --insecure
           kill $MOCK_PID
           sleep 1
