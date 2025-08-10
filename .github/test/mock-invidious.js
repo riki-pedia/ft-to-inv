@@ -31,6 +31,12 @@ const server = http.createServer((req, res) => {
     res.statusCode = 204; // no content
     return res.end();
   }
+  if (req.method === 'GET' && /^\/api\/v1\/channels\//.test(req.url)) {
+    // Simulate channel retrieval
+    const channelId = req.url.split('/').pop();
+    res.statusCode = 200;
+    res.end(JSON.stringify({ id: channelId, name: `Channel ${channelId}` }));
+  }
   // no actual playlist api in invidious, so we dont simulate it
   
   // Default: pretend endpoint not found
