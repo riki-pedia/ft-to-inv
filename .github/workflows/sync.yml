@@ -41,4 +41,4 @@ jobs:
           sleep 1
       - name: Run Invidious sync
         run: |
-          node export.js --token=${{ secrets.INVIDIOUS_TOKEN }} -i http://localhost:9999 --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports --insecure
+          node export.js --token=${{ secrets.INVIDIOUS_TOKEN }} -i http://127.0.0.1:9999 --freetube-dir=dummy-ft/  -v --dont-run-setup --export-dir=./exports --insecure
