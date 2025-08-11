@@ -17,17 +17,7 @@ const args = process.argv.slice(2);
  * @param {string} configKey - Key in the config file (e.g., 'dry_run').
  * @returns {boolean} - Resolved boolean value.
  */
-function resolveFlagArg(args, aliases, config, configKey) {
-  // Check CLI args: if any alias is present, treat as true
-  const cliValue = aliases.some(flag => args.includes(flag));
-  if (cliValue) return true;
-  // If not present in CLI, defer to config file value
-  if (config.hasOwnProperty(configKey)) {
-    return config[configKey] === true;
-  }
-  return false; // Default fallback
-}
-let configFlag = resolveFlagArg(args, ['--config', '-c', '--clear-config', '-clear-config', '-clear'], {}, null);
+function clearFiles(configFlag = false) {
 let filesToClear = [];
 if (configFlag) {
   filesToClear = ['invidious-import.json', 'import.old.json', 'playlist-import.json', 'ft-to-inv.jsonc'];
@@ -46,3 +36,7 @@ filesToClear.forEach(file => {
     console.log(`File ${filePath} does not exist, skipping.`);
   }
 });
+}
+module.exports = {
+  clearFiles
+}

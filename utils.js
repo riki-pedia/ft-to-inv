@@ -88,6 +88,11 @@ function postToInvidious(path, json = {}, token, instance, insecure = false, met
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
+        const bodyLowercase = body.toLowerCase() 
+        if (res.statusCode === 403 && bodyLowercase.includes('request must be authenticated')) {
+          console.log(`⚠️ Invidious API request failed: Either you have a bad token or the api is disabled. If the api is disabled, try using NO-SYNC mode and upload the invidious-import.json file manually through this url: 
+            ${instance}/data_control.`);
+        }
         if (res.statusCode >= 400) {
           reject(new Error(`HTTP ${res.statusCode}: ${body}`));
         } else {

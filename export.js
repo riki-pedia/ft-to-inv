@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // main entrypoint, parses cli args and starts sync
 // the command to run this is not that pretty
 // node [--use-system-ca] export.js [flags]
@@ -20,6 +21,7 @@ const {
   writePlaylistImport
 } = require('./utils');
 const cron = require('node-cron');
+const { clearFiles } = require('./clear-import-files')
 
 const args = process.argv.slice(2);
 // cron is the only arg that should reasonably have spaces, so we handle it specially
@@ -76,7 +78,6 @@ function sanitizeEnvBoolean(value) {
     }
     return false;
 }
-
 // -- Globals (to be assigned in bootstrap) --
 let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE, DONT_SHORTEN_PATHS;
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH;
@@ -108,6 +109,11 @@ function resolveFlagArg(args, aliases, config, configKey, envKey) {
   }
   return false; // Default fallback
 }
+const clearFilesFlag = resolveFlagArg(args, ['--clear', '--clear-files', '--delete-files'], {}, null)
+const clearConfigFlag = resolveFlagArg(args, ['--clear-config'])
+if (clearFilesFlag === true) {
+  clearFiles(clearConfigFlag);
+}
 // function to validate cron strings by checking if they has 5 parts, a number or * in each part, or 1 string
 function isValidCron(cronString) {
   if (typeof cronString !== 'string') return false; // Add this line
@@ -134,7 +140,7 @@ function stripDir(p) {
 async function main() {
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
-  FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
+  FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
   const ENV_CONFIG_PATH = normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG', 'FT_TO_INV_CONFIG_PATH', 'FT_INV_CONFIG', 'CONFIG']));
   // we parse configPath in config.js, but this gets used for checking if it's the first run
   const configPath = normalizePath(getArg('--config')) || normalizePath(getArg('-c')) || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
@@ -168,7 +174,7 @@ async function main() {
   VERBOSE            = resolveFlagArg(args, ['--verbose', '-v'], config, 'verbose', ['FT_TO_INV_CONFIG_VERBOSE', 'VERBOSE', 'FT_TO_INV_VERBOSE'])
   DRY_RUN            = resolveFlagArg(args, ['--dry-run'], config, 'dry_run', ['FT_TO_INV_CONFIG_DRY_RUN', 'DRY_RUN', 'FT_TO_INV_DRY_RUN'])
   QUIET              = resolveFlagArg(args, ['--quiet','-q'], config, 'quiet', ['FT_TO_INV_CONFIG_QUIET', 'QUIET', 'FT_TO_INV_QUIET'])
-  INSECURE           = resolveFlagArg(args, ['--insecure'], config, 'insecure', ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'])
+  INSECURE           = resolveFlagArg(args, ['--insecure', '--http'], config, 'insecure', ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'])
   NOSYNC             = resolveFlagArg(args, ['--no-sync'], config, 'no_sync', ['FT_TO_INV_CONFIG_NO_SYNC', 'NOSYNC', 'FT_TO_INV_NOSYNC'])
   DONT_SHORTEN_PATHS = resolveFlagArg(args, ['--dont-shorten-paths'], config, 'dont_shorten_paths', ['FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS', 'DONT_SHORTEN_PATHS', 'FT_TO_INV_DONT_SHORTEN_PATHS'])
 
@@ -186,11 +192,10 @@ async function main() {
     --token, -t               (required) Your Invidious SID cookie for authentication.
     --token continued          You can usually get a token by going to your instance > Settings/Prefrences > Manage Tokens and pasting the top one in
     --token continued          Warning: Be careful with these, they give full read/write access to your invidious account
-    --instance, -i            (optional) Your Invidious instance URL. Defaults to https://invidiou.s
+    --instance, -i            (optional) Your Invidious instance URL. Defaults to https://invidious.example.com, you should change it
     --freetube-dir, -dir, -cd (optional) Path to FreeTube data directory. Defaults to OS-specific path.
     --freetube-dir continued. On Windows, usually %AppData%\\FreeTube (yourUser/AppData/Roaming/Freetube). On Linux, usually ~/.config/FreeTube. On macOS, usually ~/Library/Application Support/FreeTube
     --export-dir, -e          (optional) Directory to write the export file to. Defaults to FreeTube directory.
-    --output-file, -output    (optional) Name of the output file. Defaults to invidious-import.json.
     --cron-schedule, -c       (optional) A cron pattern to run the sync on a schedule. If not provided, runs once and exits.
     --dry-run, -d             (optional) Run the script without making any changes to Invidious or the output file.
     --verbose, -v             (optional) Enable verbose logging.
@@ -199,6 +204,8 @@ async function main() {
     --use-system-ca           (optional) Pass this flag to node (node --use-system-ca export.js ...) to trust system CAs, useful for self-hosted instances with custom certs. See below.
     --quiet, -q               (optional) Suppress non-error console output.
     --dont-shorten-paths      (optional) Don't show shortend paths for files like the export file, by default it shows things like <FreeTubeDir>/invidious-import.json
+    --clear-files             (optional) Clear old import files before starting a new export.
+    --clear-config            (optional) Clear the config file before starting a new export. Needs to be used with --clear-files. 
         continued             instead of C:/Users/You/AppData/Roaming/FreeTube/invidious-import.json
                    Usage:
     run once: node --use-system-ca export.js --token YOUR_INVIDIOUS_SID_COOKIE [other options]

@@ -1,0 +1,78 @@
+// This is the configuration file for the FreeTube to Invidious exporter.
+// You can edit this file to change the settings, but please follow the format carefully.
+// You can also run the script with --config <path> to specify a different config file.
+// Here's what an example entry looks like:
+// "token": "your_token_here",
+// "instance": "https://invidious.example.com",
+// Make sure all the values are in double quotes and end with a comma (the last one doesn't need a comma)
+{
+  // Accepted values: a valid Invidious token
+  // Your Invidious token (SID cookie)
+  // You can usually get a token by going to your instance > Settings/Preferences > Manage Tokens and pasting any of the tokens in
+  // Warning: Be careful with these, they give full read/write access to your Invidious account
+  // You can also specify this with --token
+  // this is the only required argument, but you probably want to specify the instance too
+  "token": "abc123",
+  // Accepted values: a Invidious instance URL starting with https://
+  // If you use http://, you need to use insecure mode see below
+  // Your Invidious instance URL
+  // Defaults to https://invidiou.s
+  // If you self-host Invidious with a custom TLS certificate, make sure to run with --use-system-ca.
+  // If you're on linux, node doesn't support --use-system-ca, but trusts the system store by default.
+  // Make sure to run with --use-system-ca if you get TLS errors or install the CA.
+  // If your instance runs on a port other than 443, you can specify it like http://invidious.example.com:3000
+  "instance": "https://invidious.example.com",
+  // Accepted values: a valid FreeTube data directory path, youu should add proper slashes for your OS: \ on Windows, / on Linux/Mac
+  // Your FreeTube data directory
+  // On Windows, usually %AppData%\FreeTube (yourUser/AppData/Roaming/FreeTube)
+  // On Linux, usually ~/.config/FreeTube
+  // On macOS, usually ~/Library/Application Support/FreeTube
+  // You can also specify this with --freetube-dir
+  // double backslashes are required on Windows, escape to \
+  "freetube_dir": "C:\\Users\\you\\AppData\\Roaming\\FreeTube",
+  // Accepted values: a valid export directory path, you should add proper slashes for your OS: \ on Windows, / on Linux/Mac
+  // The export output directory
+  // Defaults to either the FreeTube directory or the current working directory
+  // You can also specify this with --export-dir
+  "export_dir": ".\\",
+  // Accepted values: true or false
+  // Enable verbose output?
+  // This will log more information about what the script is doing
+  // Useful for debugging or understanding the sync process
+  "verbose": true,
+  // Accepted values: true or false
+  // Enable dry run mode (no uploads)?
+  // This will not upload anything to Invidious, just show what would be done
+  // Useful for testing the script without making changes
+  "dry_run": false,
+  // Accepted values: true or false
+  // Show full paths in logs?
+  // By default, it shows things like <FreeTubeDir>/invidious-import.json
+  // instead of C:/Users/You/AppData/Roaming/FreeTube/invidious-import.json
+  // You can also specify this with --dont-shorten-paths
+  "dont_shorten_paths": true,
+  // Accepted values: true or false
+  // Skip the sync to Invidious step
+  // Intended for cases where you want to bring the export file to Invidious yourself or can't use the API
+  // You can also specify this with --no-sync
+  "noSync": false,
+  // Accepted values: true or false
+  // Suppress all non-error output?
+  // This will hide all output from the script, including errors
+  // You can also specify this with --quiet, see help for aliases
+  "quiet": false,
+  // Accepted values: true or false
+  // Use HTTP instead of HTTPS for Invidious requests
+  // This is insecure and should only be used if you know what you're doing
+  // You can also specify this with --insecure
+  // This is useful for self-hosted instances on default configurations
+  // when you run first-time setup, this adapts based on the instance you entered
+  "insecure": false,
+  // Accepted values: a valid cron pattern, like "0 0 * * *" for daily at midnight
+  // A cron pattern to run the sync on a schedule
+  // If not provided, runs once and exits
+  // See https://crontab.guru/ for help with cron patterns
+  // You can also specify this with --cron-schedule
+  // defaults to '' (empty string) which means it runs once and exits like normal
+  "cron_schedule": ""
+}
