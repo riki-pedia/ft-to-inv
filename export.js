@@ -109,11 +109,6 @@ function resolveFlagArg(args, aliases, config, configKey, envKey) {
   }
   return false; // Default fallback
 }
-const clearFilesFlag = resolveFlagArg(args, ['--clear', '--clear-files', '--delete-files'], {}, null)
-const clearConfigFlag = resolveFlagArg(args, ['--clear-config'])
-if (clearFilesFlag === true) {
-  clearFiles(clearConfigFlag);
-}
 // function to validate cron strings by checking if they has 5 parts, a number or * in each part, or 1 string
 function isValidCron(cronString) {
   if (typeof cronString !== 'string') return false; // Add this line
@@ -157,6 +152,12 @@ async function main() {
   } else {
     config = loadConfig();
   }
+  const clearFilesFlag = resolveFlagArg(args, ['--clear', '--clear-files', '--delete-files'], {}, null)
+const clearConfigFlag = resolveFlagArg(args, ['--clear-config'], {}, null)
+if (clearFilesFlag === true) {
+  clearFiles(clearConfigFlag);
+  process.exit(0);
+}
   // Load/merge CLI args + config file
   // Detect first-run (no config file or no prior export)
   // Assign globals from config
