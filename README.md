@@ -9,7 +9,7 @@ cd ft-to-invidious-export
 node export.js
 ```
 ## Config
-You can do a lot with this, but I'm not very good at writing READMEs. Here's a list of the config flags and ways to use this. These are listed in the order that they take precedence 
+You can do a lot with this, but I'm not very good at writing READMEs. Here's a list of the config flags and ways to use them. These are listed in the order that they take precedence 
   ### CLI Arguments
 | Argument | Aliases | Explanation | Usage |
 | ------- | -------- | ------- | ----- |
