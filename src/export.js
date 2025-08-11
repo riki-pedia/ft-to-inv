@@ -168,7 +168,6 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   FREETUBE_DIR = normalizePath(getArg('--freetube-dir')) || normalizePath(getArg('-f')) || normalizePath(getArg('-cd')) || normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'])) || normalizePath(config.freetube_dir) || getDefaultFreeTubeDir();
   // these files are always those names, not taking args for them
   // if theyre different make a symlink ig
-  console.log(EXPORT_DIR, FREETUBE_DIR, '(logged for debugging)');
   PROFILE_PATH = path.join(FREETUBE_DIR, 'profiles.db');
   HISTORY_PATH = path.join(FREETUBE_DIR, 'history.db');
   PLAYLIST_PATH = path.join(FREETUBE_DIR, 'playlists.db');
