@@ -48,7 +48,7 @@ jobs:
           node .github/test/mock-invidious.js &
           MOCK_PID=$!
           sleep 2
-          node export.js
+          node ./src/export.js
           kill $MOCK_PID
           sleep 1
           # give time to finish
