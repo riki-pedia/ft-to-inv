@@ -6,11 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 const args = process.argv.slice(2);
-// pasted from config and export.js
-// because we don't want to import the whole file just for this function
+const clearDir = path.resolve('./')
 /**
- * Resolves a boolean flag from CLI args or config file.
- * meant for boolean args like verbose or dry run
  * @param {string[]} args - CLI arguments (e.g., from process.argv).
  * @param {string[]} aliases - List of CLI flags to check (e.g., ['--dry-run']).
  * @param {object} config - Parsed config object.
@@ -27,7 +24,7 @@ else {
 filesToClear = ['invidious-import.json', 'import.old.json', 'playlist-import.json'];
 }
 filesToClear.forEach(file => {
-  const filePath = path.join(__dirname, file);
+  const filePath = path.join(clearDir, file);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
     console.log(`Deleted ${filePath}`);

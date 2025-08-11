@@ -140,7 +140,10 @@ async function main() {
   // we parse configPath in config.js, but this gets used for checking if it's the first run
   const configPath = normalizePath(getArg('--config')) || normalizePath(getArg('-c')) || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
   const exportPath = path.join('./', 'invidious-import.json'); // default export path for first-run check
-  const isFirstRun = !fs.existsSync(exportPath) && !fs.existsSync(configPath);
+  let isFirstRun = false;
+  if (!fs.existsSync(configPath)) {
+    isFirstRun = true;
+  }
   // Only run setup if truly first time
   let config;
   let dontRunSetup = resolveFlagArg(args, ['--dont-run-setup', '-drs', '--dont-run-first-time-setup'], {}, '', ['DONT_RUN_SETUP', 'FT_TO_INV_CONFIG_DONT_RUN_SETUP', 'FT_TO_INV_CONFIG_DONT_RUN_FIRST_TIME_SETUP', 'FT_TO_INV_DRS', 'DRS']);
@@ -154,7 +157,7 @@ async function main() {
   }
   const clearFilesFlag = resolveFlagArg(args, ['--clear', '--clear-files', '--delete-files'], {}, null)
 const clearConfigFlag = resolveFlagArg(args, ['--clear-config'], {}, null)
-if (clearFilesFlag === true) {
+if (clearFilesFlag === true || clearConfigFlag === true) {
   clearFiles(clearConfigFlag);
   process.exit(0);
 }
@@ -165,6 +168,7 @@ if (clearFilesFlag === true) {
   FREETUBE_DIR = normalizePath(getArg('--freetube-dir')) || normalizePath(getArg('-f')) || normalizePath(getArg('-cd')) || normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'])) || normalizePath(config.freetube_dir) || getDefaultFreeTubeDir();
   // these files are always those names, not taking args for them
   // if theyre different make a symlink ig
+  console.log(EXPORT_DIR, FREETUBE_DIR, '(logged for debugging)');
   PROFILE_PATH = path.join(FREETUBE_DIR, 'profiles.db');
   HISTORY_PATH = path.join(FREETUBE_DIR, 'history.db');
   PLAYLIST_PATH = path.join(FREETUBE_DIR, 'playlists.db');
