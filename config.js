@@ -63,13 +63,15 @@ function loadJsonc(filePath) {
 
 // ==== NORMALIZE PATHS ====
 function normalizePath(inputPath) {
+  if (typeof inputPath !== 'string') return '';
   if (!inputPath) return '';
   if (inputPath === '.' || inputPath === './' && detectOs() === 'windows') {
     return '.\\';
   }
-  return detectOs() === 'windows'
-    ? path.normalize(inputPath.replace(/\//g, '\\'))
-    : path.normalize(inputPath);
+  if (detectOs() === 'windows') {
+    return path.normalize(inputPath.replace(/\//g, '\\'));
+  }
+  return path.normalize(inputPath);
 }
 // shouldnt need to correct paths on macOS/Linux
 // ==== RESOLVE ALL FILE PATHS ====
