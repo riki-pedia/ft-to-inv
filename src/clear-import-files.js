@@ -5,17 +5,30 @@
 const fs = require('fs');
 const path = require('path');
 
-const args = process.argv.slice(2);
+const readline = require('readline');
+// where the script is run rather than __dirname because it points to src/
 const clearDir = path.resolve('./')
-/**
- * @param {string[]} args - CLI arguments (e.g., from process.argv).
- * @param {string[]} aliases - List of CLI flags to check (e.g., ['--dry-run']).
- * @param {object} config - Parsed config object.
- * @param {string} configKey - Key in the config file (e.g., 'dry_run').
- * @returns {boolean} - Resolved boolean value.
- */
-function clearFiles(configFlag = false) {
-let filesToClear = [];
+async function localPrompt(question, defaultValue = 'n') {
+  return new Promise(resolve => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    rl.question(`${question}${defaultValue ? ` [${defaultValue}]` : ''}: `, answer => {
+      rl.close();
+      resolve(answer.trim() || defaultValue);
+    });
+  });
+}
+async function clearFiles(configFlag = false) {
+  try {
+    let filesToClear = [];
+    const delPrompt = await localPrompt('Delete all import files? (y/n)', 'n')
+    if (delPrompt.toLowerCase() !== 'y') {
+      console.log('Aborting file deletion.');
+      return;
+}
+
 if (configFlag) {
   filesToClear = ['invidious-import.json', 'import.old.json', 'playlist-import.json', 'ft-to-inv.jsonc'];
 }
@@ -32,7 +45,11 @@ filesToClear.forEach(file => {
   else {
     console.log(`File ${filePath} does not exist, skipping.`);
   }
-});
+}
+);
+} catch (err) {
+  console.error('Error clearing files:', err);
+}
 }
 module.exports = {
   clearFiles

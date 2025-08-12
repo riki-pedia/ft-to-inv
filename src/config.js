@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const commentJson = require('comment-json');
-const { get } = require('http');
 
 const args = process.argv.slice(2);
 const getArg = (name, fallback = null) => {
@@ -22,10 +21,8 @@ const getArg = (name, fallback = null) => {
 function getEnv(option) {
   return process.env[option] || undefined;
 }
-// ==== Defaults ====
 const DEFAULT_CONFIG_FILENAME = 'ft-to-inv.jsonc';
 
-// ==== ENV ====
 const ENV_CONFIG_PATH = normalizePath(getEnv('FT_INV_CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG')) || normalizePath(getEnv('CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG_PATH'));
 
 // args parsed in export.js
@@ -48,8 +45,6 @@ function getDefaultFreeTubeDir() {
   if (os === 'unknown') return null;
   return null;
 }
-
-// ==== LOAD JSONC CONFIG ====
 function loadJsonc(filePath) {
   try {
     const raw = fs.readFileSync(filePath, 'utf-8');
@@ -60,8 +55,6 @@ function loadJsonc(filePath) {
     return {};
   }
 }
-
-// ==== NORMALIZE PATHS ====
 function normalizePath(inputPath) {
   if (typeof inputPath !== 'string') return '';
   if (!inputPath) return '';
@@ -73,8 +66,6 @@ function normalizePath(inputPath) {
   }
   return path.normalize(inputPath);
 }
-// shouldnt need to correct paths on macOS/Linux
-// ==== RESOLVE ALL FILE PATHS ====
 // stopped using this in favor of hardcoding in export.js
 // but vs still says it's used, so i'm not removing it yet
 function resolvePaths(config) {
@@ -237,7 +228,6 @@ function detectHttps(url) {
   if (url.startsWith('http://')) return (insecure = true);
   return false;
 }
-// ==== FIRST-TIME SETUP INTERACTIVE PROMPT ====
 async function runFirstTimeSetup() {
   
   console.log('\n🛠 First-time setup: Let\'s configure your FreeTube → Invidious sync');
@@ -286,7 +276,6 @@ async function runFirstTimeSetup() {
 
 }
 
-// ==== MAIN LOAD FUNCTION ====
 function loadConfig() {
   let config
   const configArg = getArg('--config') || getArg('-c') || getArg('-conf');
@@ -301,7 +290,6 @@ function loadConfig() {
   return merged;
 }
 
-// ==== EXPORTS ====
 module.exports = {
   loadConfig,
   runFirstTimeSetup,

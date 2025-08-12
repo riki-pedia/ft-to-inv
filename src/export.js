@@ -155,11 +155,12 @@ async function main() {
   } else {
     config = loadConfig();
   }
-  const clearFilesFlag = resolveFlagArg(args, ['--clear', '--clear-files', '--delete-files'], {}, null)
+const clearFilesFlag = resolveFlagArg(args, ['--clear', '--clear-files', '--delete-files'], {}, null)
 const clearConfigFlag = resolveFlagArg(args, ['--clear-config'], {}, null)
 if (clearFilesFlag === true || clearConfigFlag === true) {
   clearFiles(clearConfigFlag);
-  process.exit(0);
+  // exit early to prevent trying to sync with no files or config
+  return
 }
   // Load/merge CLI args + config file
   // Detect first-run (no config file or no prior export)
@@ -236,9 +237,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
      CLI ARGS > ENVIRONMENT VARIABLES > CONFIG (defaults)
      Any of the config options have an environment variable equivalent, and they all start with FT_TO_INV_CONFIG_.
      Here's an example:
-     FT_TO_INV_CONFIG_TOKEN=abc123
-
-     `
+     FT_TO_INV_CONFIG_TOKEN=abc123`
   )
   process.exit(0);
   }
