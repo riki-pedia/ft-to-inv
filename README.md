@@ -1,12 +1,16 @@
 # FreeTube to Invidious Exporter
 Takes FreeTube data and exports it to invidious-import.json, where it can be optionally imported to Invidious via the API. You can also schedule runs via the --cron flag, see below.
 ## Installation
-This is a work in progress, for now you can just do this:
+You can get this CLI from npm, here's the install:
 ```
-git clone https://github.com/riki-pedia/ft-to-invidious-export 
-cd ft-to-invidious-export
-# probably should rename to ft-to-inv
-node export.js
+$ npm i -g ft-to-inv
+$ ft-to-inv --first-time-setup
+```
+You can also clone the repo and run via `node`
+```
+git clone https://github.com/riki-pedia/ft-to-inv
+cd ft-to-inv
+node src/export.js --first-time-setup
 ```
 ## Config
 You can do a lot with this, but I'm not very good at writing READMEs. Here's a list of the config flags and ways to use them. These are listed in the order that they take precedence 
