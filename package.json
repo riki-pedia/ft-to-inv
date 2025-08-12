@@ -8,7 +8,7 @@
     "export",
     "exporter",
     "ft",
-    "inv", 
+    "inv",
     "cli",
     "ft-to-inv"
   ],
@@ -28,7 +28,7 @@
     "test": "node ./src/export.js"
   },
   "bin": {
-    "ft-to-inv": "./src/export.js"
+    "ft-to-inv": "src/export.js"
   },
   "dependencies": {
     "comment-json": "^4.2.5",
