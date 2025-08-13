@@ -78,6 +78,90 @@ function sanitizeEnvBoolean(value) {
     }
     return false;
 }
+/// just tracks what args we should get, then warns if there's one shouldn't be there
+const expectedArgs = {
+  "TOKEN":              "--token, -t",
+  "INSTANCE":           "--instance, -i",
+  "VERBOSE":            "--verbose, -v",
+  "DRY_RUN":            "--dry-run",
+  "QUIET":              "--quiet, -q",
+  "INSECURE":           "--insecure, --http",
+  "NOSYNC":             "--no-sync",
+  "HELP":               "--help, -h, -?, /?",
+  "CRON_SCHEDULE":      "--cron-schedule, -cron, --cron",
+  "DONT_SHORTEN_PATHS": "--dont-shorten-paths",
+  "FIRST_TIME_SETUP":   "--first-time-setup, -fts",
+  "DONT_RUN_SETUP":     "--dont-run-setup, -drs",
+  "EXPORT_DIR":         "--export-dir, -e",
+  "FREETUBE_DIR":       "--freetube-dir, -f, -cd",
+  "RUN_FIRST_TIME_SETUP": "--run-first-time-setup, --first-time-setup, -fts",
+  "DONT_RUN_FIRST_TIME_SETUP": "--dont-run-first-time-setup, --dont-run-setup, -drs",
+  "CONFIG":             "--config, -c",
+}
+// list of args that should reasonably have values, like -t <value>
+const flagsExpectingValue = [
+  '--token', '-t',
+  '--config', '-c',
+  '--export-dir', '-e',
+  '--freetube-dir', '-f', '-cd',
+  '--cron-schedule', '-cron',
+  '--instance', '-i'
+]
+const validShortFlags = [
+  '-t', '-c', '-e', '-f', '-cd', '-cron', '-i', '-fts', '-drs', '-h', '-?', '-q', '-v'
+]
+// gets args param from something like process.argv and checks it against expectedArgs
+// if its not expected, we exit early with an error
+function isExpectedArg(argList = args) {
+  const flatExpected = Object.values(expectedArgs)
+    .flatMap(e => e.split(',').map(s => s.trim()));
+
+  let lastWasValueFlag = false;
+
+  for (const a of argList) {
+    if (lastWasValueFlag) {
+      lastWasValueFlag = false;
+      continue;
+    }
+
+    if (a.startsWith('--')) {
+      const eqIndex = a.indexOf('=');
+      const cleanArg = eqIndex !== -1 ? a.substring(0, eqIndex) : a;
+      if (!flatExpected.includes(cleanArg)) {
+        console.error(`❌ Unknown argument: ${cleanArg}`);
+        process.exit(1);
+      }
+      if (flagsExpectingValue.includes(cleanArg)) {
+        lastWasValueFlag = true;
+      }
+    }
+    else if (a.startsWith('-') && a.length > 1) {
+      if (validShortFlags.includes(a)) {
+        // whole arg is a valid short flag (multi-letter or single)
+        if (flagsExpectingValue.includes(a)) {
+          lastWasValueFlag = true;
+        }
+      } else {
+        // treat as combined single-letter flags
+        const shortArgs = a.slice(1).split('');
+        for (const sa of shortArgs) {
+          const cleanArg = `-${sa}`;
+          if (!flatExpected.includes(cleanArg)) {
+            console.error(`❌ Unknown argument: ${cleanArg}`);
+            process.exit(1);
+          }
+        }
+      }
+    }
+    else {
+      console.error(`❌ Unexpected positional argument: ${a}`);
+      process.exit(1);
+    }
+  }
+
+  return true;
+}
+
 // -- Globals (to be assigned in bootstrap) --
 let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE, DONT_SHORTEN_PATHS;
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH;
@@ -241,6 +325,21 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   )
   process.exit(0);
   }
+  isExpectedArg(args);
+  // since this sets false, they wont manipulate each other
+  if (QUIET && VERBOSE === true) {
+    console.log('set verbose to false because quiet is enabled')
+    VERBOSE = false;
+  }
+  if (VERBOSE && QUIET === true) {
+    console.log('set quiet to false because verbose is enabled')
+    QUIET = false;
+  }
+  // if it fails for whatever reason
+  if (QUIET && VERBOSE) {
+    console.error('❌ Conflicting options: --quiet and --verbose');
+    process.exit(1);
+  }
   // Validate required files
   for (const f of [HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH]) {
     if (!fs.existsSync(f)) {
@@ -315,6 +414,8 @@ async function sync() {
       },
       playlists
     };
+
+   if (VERBOSE) console.log(`Calculating diffs...`);
 
   const old = readOldExport();
   const safeOldPlaylists = (old.playlists || []).filter(
@@ -397,6 +498,7 @@ const removedPlaylists = safeOldPlaylists.filter(
         markError(`Failed to subscribe to ${sub}`, err);
       }
     }
+    if (VERBOSE) console.log(`Starting playlist export...`);
  const playlistsToImport = [];
 // console.log(`found ${pl} and ${pl.title}`)
 const oldPlaylistTitles = new Set(
@@ -461,11 +563,11 @@ if (playlistsToImport.length > 0) {
      }
     }
 
-    // Delete playlists
-// Remove deleted playlists from playlist-import.json
-const importPath = './playlist-import.json';
-if (removedPlaylists.length > 0 && fs.existsSync(importPath)) {
-  try {
+  if (VERBOSE) console.log(`Processing removed playlists...`);
+  // Remove deleted playlists from playlist-import.json
+  const importPath = './playlist-import.json';
+  if (removedPlaylists.length > 0 && fs.existsSync(importPath)) {
+    try {
     const importData = JSON.parse(fs.readFileSync(importPath, 'utf-8'));
     
     // Filter out any playlists matching removed titles (case-insensitive)

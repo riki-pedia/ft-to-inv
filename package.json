@@ -1,6 +1,6 @@
 {
   "name": "ft-to-inv",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "This takes whatever is in you're FreeTube data (history, playlists, subscriptions), and exports them in invidious style JSON format, where you can optionally sync to Invidious through the API. This is useful for migrating from FreeTube to Invidious, or just exporting your data. This is a CLI tool. You can also schedule exports using cron.",
   "keywords": [
     "FreeTube",
@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "comment-json": "^4.2.5",
-    "strip-json-comments": "^5.0.2",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "strip-json-comments": "^5.0.3"
   }
 }
