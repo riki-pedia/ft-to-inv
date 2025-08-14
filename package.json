@@ -1,6 +1,6 @@
 {
-  "name": "@riki-pedia/ft-to-inv",
-  "version": "0.1.8",
+  "name": "ft-to-inv",
+  "version": "0.1.9",
   "description": "This takes whatever is in you're FreeTube data (history, playlists, subscriptions), and exports them in invidious style JSON format, where you can optionally sync to Invidious through the API. This is useful for migrating from FreeTube to Invidious, or just exporting your data. This is a CLI tool. You can also schedule exports using cron.",
   "keywords": [
     "FreeTube",
