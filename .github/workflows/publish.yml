@@ -1,0 +1,70 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # only run on tags like v1.2.3
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify tag matches package.json version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
+            exit 1
+           fi
+          echo "✅ Tag matches package.json version"
+
+      - name: Install dependencies
+        run: | 
+         npm ci
+         npm i
+      - name: Setup Test
+        run: |
+          mkdir -p ./dummy-ft
+          # copy the dummy files from the test directory
+          # this is to ensure that the export script doesn't fail due to missing files
+          cp .github/test/*.db ./dummy-ft/
+          mkdir -p ./exports
+          # assurance
+          for f in history.db playlists.db profiles.db; do
+          test -f dummy-ft/$f || (echo "❌ Missing dummy-ft/$f" && exit 1)
+          done
+          sleep 1
+      - name: Run tests and save logs
+        env:
+          CI: true
+          INSTANCE: http://127.0.0.1:9999
+          TOKEN: a
+          EXPORT_DIR: ./exports
+          FREETUBE_DIR: ./dummy-ft
+          VERBOSE: true
+          INSECURE: true
+          DONT_RUN_SETUP: true
+        run: npm test | tee ci.log
+
+      - name: Check logs for custom errors
+        run: |
+          if grep -q "❌ Fatal error" ci.log; then
+            echo "Custom error detected in logs. Failing."
+            exit 1
+          fi
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
