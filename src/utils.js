@@ -61,6 +61,20 @@ function noSyncWrite(outputObj, outputPath, quiet) {
 let INSECURE = config.insecure || false;
 let INSTANCE = config.instance;
 let TOKEN = config.token;
+let retryCount = 0;
+async function retryPostRequest(path, json, token, instance, insecure, method) {
+  return new Promise((resolve, reject) => {
+    const attemptRequest = async () => {
+      while (retryCount < 3) {
+        retryCount++;
+        await postToInvidious(path, json, token, instance, insecure, method);
+        
+      }
+    };
+    attemptRequest();
+  });
+}
+
 /**
  * Send a POST request to Invidious API
  * @param {string} path - The API endpoint path.
@@ -74,8 +88,7 @@ function postToInvidious(path, json = {}, token, instance, insecure = false, met
   const isSecure = !insecure;
   const client = isSecure ? https : http;
   const fullPath = `${instance.replace(/\/$/, '')}/api/v1${path}`;
-  const payload = JSON.stringify(json ?? {});
-
+  const payload = JSON.stringify(json ?? {}); 
   return new Promise((resolve, reject) => {
     const req = client.request(fullPath, {
       method,
@@ -87,16 +100,20 @@ function postToInvidious(path, json = {}, token, instance, insecure = false, met
     }, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
-      res.on('end', () => {
+      res.on('end', async () => {
         const bodyLowercase = body.toLowerCase() 
         if (res.statusCode === 403 && bodyLowercase.includes('request must be authenticated')) {
           console.log(`⚠️ Invidious API request failed: Either you have a bad token or the api is disabled. If the api is disabled, try using NO-SYNC mode and upload the invidious-import.json file manually through this url: 
             ${instance}/data_control.`);
         }
         if (res.statusCode >= 400) {
-          reject(new Error(`HTTP ${res.statusCode}: ${body}`));
+          console.error(`❌ Invidious API request failed with HTTP ${res.statusCode}: ${body}`);
         } else {
           resolve({ code: res.statusCode, body });
+        }
+        if (bodyLowercase.includes('error') && res.statusCode !== 404) {
+          console.log(`request failed, retrying... (${retryCount})`);
+          await retryPostRequest(path, json, token, instance, insecure, method);
         }
       });
     });
