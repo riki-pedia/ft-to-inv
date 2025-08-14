@@ -18,7 +18,8 @@ const {
   noSyncWrite,
   postToInvidious,
   getChannelName,
-  writePlaylistImport
+  writePlaylistImport,
+  getVideoNameAndAuthor
 } = require('./utils');
 const cron = require('node-cron');
 const { clearFiles } = require('./clear-import-files')
@@ -108,7 +109,7 @@ const flagsExpectingValue = [
   '--instance', '-i'
 ]
 const validShortFlags = [
-  '-t', '-c', '-e', '-f', '-cd', '-cron', '-i', '-fts', '-drs', '-h', '-?', '-q', '-v'
+  '-t', '-c', '-e', '-f', '-cd', '-cron', '-i', '-fts', '-drs', '-h', '-?', '-q', '-v', '-p', '-hi', '-s'
 ]
 // gets args param from something like process.argv and checks it against expectedArgs
 // if its not expected, we exit early with an error
@@ -167,6 +168,9 @@ let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHED
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH;
 let OUTPUT_FILE, OLD_EXPORT_PATH;
 let FIRST_TIME_SETUP = false; // flag to indicate if we should run the first-time setup
+
+let PLAYLISTS, HISTORY, SUBS
+
 // should be global so utils can access it
 let FREETUBE_DIR 
 let EXPORT_DIR 
@@ -266,6 +270,10 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   INSECURE           = resolveFlagArg(args, ['--insecure', '--http'], config, 'insecure', ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'])
   NOSYNC             = resolveFlagArg(args, ['--no-sync'], config, 'no_sync', ['FT_TO_INV_CONFIG_NO_SYNC', 'NOSYNC', 'FT_TO_INV_NOSYNC'])
   DONT_SHORTEN_PATHS = resolveFlagArg(args, ['--dont-shorten-paths'], config, 'dont_shorten_paths', ['FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS', 'DONT_SHORTEN_PATHS', 'FT_TO_INV_DONT_SHORTEN_PATHS'])
+
+  PLAYLISTS          = resolveFlagArg(args, ['--playlists', '--dont-include-playlists', '-p'], config, 'playlists', ['FT_TO_INV_CONFIG_PLAYLISTS', 'PLAYLISTS', 'FT_TO_INV_PLAYLISTS'])
+  HISTORY            = resolveFlagArg(args, ['--history', '--dont-include-history', '-hi'], config, 'history', ['FT_TO_INV_CONFIG_HISTORY', 'HISTORY', 'FT_TO_INV_HISTORY'])
+  SUBS               = resolveFlagArg(args, ['--subscriptions', '--dont-include-subs', '-s'], config, 'subscriptions', ['FT_TO_INV_CONFIG_SUBS', 'SUBS', 'FT_TO_INV_SUBS'])
 
   OUTPUT_FILE        = exportPath || path.join(EXPORT_DIR, 'invidious-import.json');
   OLD_EXPORT_PATH    = path.join(EXPORT_DIR, 'import.old.json');
@@ -378,10 +386,20 @@ function certErrorHint(err) {
     }
 // === sync logic ===
 async function sync() {
-    const historyData = await loadNDJSON(HISTORY_PATH);
-    const playlistData = await loadNDJSON(PLAYLIST_PATH);
-    const subscriptions = await extractSubscriptions(PROFILE_PATH);
-    const watch_history = [...new Set(historyData.map(entry => entry.videoId))];
+    
+    let historyData = await loadNDJSON(HISTORY_PATH);
+    if (HISTORY === true) {
+      historyData = [];
+    }
+    let playlistData = await loadNDJSON(PLAYLIST_PATH);
+    if (PLAYLISTS === true) {
+      playlistData = [];
+    }
+    let subscriptions = await extractSubscriptions(PROFILE_PATH);
+    if (SUBS === true) {
+      subscriptions = [];
+    }
+    const watch_history = [...new Set(historyData.map(entry => entry.videoId))] || [];
 
     const seenPlaylists = new Set();
     const playlists = [];
@@ -414,6 +432,19 @@ async function sync() {
       },
       playlists
     };
+    let historyjson, playlistsjson, subscriptionsjson;
+    if (HISTORY) {
+      console.log('Ignoring history due to passing ignore history in')
+       historyjson = {};
+    }
+    if (PLAYLISTS) {
+      console.log('Ignoring playlists due to passing ignore playlists in')
+       playlistsjson = {};
+    }
+    if (SUBS) {
+      console.log('Ignoring subscriptions due to passing ignore subscriptions in')
+      subscriptionsjson = {};
+    }
 
    if (VERBOSE) console.log(`Calculating diffs...`);
 
@@ -424,19 +455,19 @@ async function sync() {
 const safeNewPlaylists = (output.playlists || []).filter(
   p => p && typeof p.title === 'string' && Array.isArray(p.videos)
 );
-const newPlaylists = safeNewPlaylists.filter(
+const newPlaylists = playlistsjson || safeNewPlaylists.filter(
   p => !safeOldPlaylists.some(
     op => op.title === p.title && JSON.stringify(op.videos) === JSON.stringify(p.videos)
   )
 );
-const removedPlaylists = safeOldPlaylists.filter(
+const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
   op => !safeNewPlaylists.some(p => p.title === op.title)
 );
-    const newHistory = output.watch_history.filter(id => !old.watch_history.includes(id));
-    const newSubs = output.subscriptions.filter(id => !old.subscriptions.includes(id));
+    const newHistory = historyjson || output.watch_history.filter(id => !old.watch_history.includes(id));
+    const newSubs = subscriptionsjson || output.subscriptions.filter(id => !old.subscriptions.includes(id));
 
-    const removedHistory = old.watch_history.filter(id => !output.watch_history.includes(id));
-    const removedSubs = old.subscriptions.filter(id => !output.subscriptions.includes(id));
+    const removedHistory = historyjson || old.watch_history.filter(id => !output.watch_history.includes(id));
+    const removedSubs = subscriptionsjson || old.subscriptions.filter(id => !output.subscriptions.includes(id));
 
     var useSVideo = newHistory.length !== 1 ? "s" : "";
     var useSSub = newSubs.length !== 1 ? "s" : "";
@@ -447,10 +478,30 @@ const removedPlaylists = safeOldPlaylists.filter(
       return;
     }
 
+    if (HISTORY && SUBS && PLAYLISTS) {
+        console.log('why are you ignoring everything?')
+        return;
+      }
+    
     if (VERBOSE) {
-      console.log(`Found ${newHistory.length} new video${useSVideo} to sync`);
-      console.log(`Found ${newSubs.length} new subscription${useSSub} to sync`);
-      console.log(`Found ${newPlaylists.length} new playlist${useSPlaylist} to sync`);
+      if (!HISTORY) {
+        console.log(`Found ${newHistory.length} new video${useSVideo} to sync`);
+      }
+      else {
+        console.log('Ignoring history, not calculating new videos to sync')
+      }
+      if (!SUBS) {
+        console.log(`Found ${newSubs.length} new subscription${useSSub} to sync`);
+      }
+      else {
+        console.log('Ignoring subscriptions, not calculating new subscriptions to sync');
+      }
+      if (!PLAYLISTS) {
+        console.log(`Found ${newPlaylists.length} new playlist${useSPlaylist} to sync`);
+      }
+      else {
+        console.log('Ignoring playlists, not calculating new playlists to sync');
+      }
       if (removedHistory.length) {
         console.log(`Found ${removedHistory.length} video${removedHistory.length !== 1 ? 's' : ''} to remove from watch history`);
       }
@@ -473,13 +524,15 @@ const removedPlaylists = safeOldPlaylists.filter(
         console.log('ℹ️ No changes to sync, not updating Invidious or export files');
         return;
       }
-      if (newHistory.length) {
+      if (newHistory.length && !HISTORY) {
       for (const videoId of newHistory) {
        try {
-       console.log(videoId)
+        const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN);
+        const prettyTitle = JSON.stringify(title) || 'Unknown Title';
+        const prettyAuthor = JSON.stringify(author) || 'Unknown Author';
        const res = await postToInvidious(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
        if (!QUIET) {
-       console.log(`✅ Marked ${videoId} as watched (HTTP ${res.code})`);
+       console.log(`✅ Marked ${prettyTitle} by ${prettyAuthor} as watched (HTTP ${res.code})`);
        }
       }
       catch (err) {

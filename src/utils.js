@@ -160,6 +160,26 @@ async function getChannelName(ucid, instance = INSTANCE) {
     return ucid; // Fallback to ID if failed
   }
 }
+async function getVideoNameAndAuthor(vid, instance, token) {
+  try {
+    const url = new URL(`/api/v1/videos/${vid}`, instance).href;
+    const res = await fetch(url, { headers:  {
+        'Content-Type': 'application/json',
+        'Cookie': `SID=${token}`
+      } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return { author: data.author, title: data.title };
+  } catch (err) {
+     console.warn(`⚠️ Failed to get channel name for ${vid}:`, err.message);
+     const errTL = err.message.toLowerCase();
+     if (errTL.includes('fetch failed')) {
+        console.log('potential cert problem, see docs about --use-system-ca')
+     }
+    return { author: 'Unknown', title: vid };
+  }
+}
+
 //stripDir goes in export, not used here
 module.exports = {
   loadNDJSON,
@@ -169,5 +189,6 @@ module.exports = {
   noSyncWrite,
   postToInvidious,
   getChannelName,
-  writePlaylistImport
+  writePlaylistImport,
+  getVideoNameAndAuthor
 };
