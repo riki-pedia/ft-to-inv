@@ -297,4 +297,5 @@ module.exports = {
   normalizePath,
   getDefaultFreeTubeDir,
   getEnv,
+  prompt
 };

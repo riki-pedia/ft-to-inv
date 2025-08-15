@@ -9,7 +9,7 @@
 // for example: set FT_TO_INV_CONFIG_INSTANCE=https://invidous.example.com sets the instance flag to be https://invidious.example.com
 const fs = require('fs');
 const path = require('path');
-const { loadConfig, runFirstTimeSetup, getDefaultFreeTubeDir, normalizePath, getEnv } = require('./config');
+const { loadConfig, runFirstTimeSetup, getDefaultFreeTubeDir, normalizePath, getEnv , prompt} = require('./config');
 const {
   loadNDJSON,
   extractSubscriptions,
@@ -473,8 +473,80 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
     var useSSub = newSubs.length !== 1 ? "s" : "";
     var useSPlaylist = newPlaylists.length !== 1 ? "s" : "";
 
+   const prettyNewHistory = [];
+   const prettyNewSubs = [];
+   const prettyNewPlaylists = [];
+
+   const prettyRemovedHistory = [];
+   const prettyRemovedSubs = [];
+   const prettyRemovedPlaylists = [];
+  if (DRY_RUN) {
+   for (const id of newHistory) {
+      const video = await getVideoNameAndAuthor(id, INSTANCE, TOKEN);
+      prettyNewHistory.push(`- ${video.title} by ${video.author} (${id})`);
+   }
+   for (const channel of newSubs) {
+     const channelInfo = await getChannelName(channel, INSTANCE);
+     prettyNewSubs.push(`- ${channelInfo} (${channel})`);
+   }
+   for (const playlist of newPlaylists) {
+    // dont have a helper for playlists, we just read the properties instead
+     prettyNewPlaylists.push(`- ${playlist.title}`);
+   }
+   for (const playlist of removedPlaylists) {
+    // dont have a helper for playlists, we just read the properties instead
+     prettyRemovedPlaylists.push(`- ${playlist.title}`);
+   }
+   for (const id of removedHistory) {
+      const video = await getVideoNameAndAuthor(id, INSTANCE, TOKEN);
+      prettyRemovedHistory.push(`- ${video.title} by ${video.author} (${id})`);
+   }
+   for (const channel of removedSubs) {
+     const channelInfo = await getChannelName(channel, INSTANCE);
+     prettyRemovedSubs.push(`- ${channelInfo} (${channel})`);
+   }
+  }
+
+   const newH = newHistory.length ? 'Would sync ' + newHistory.length + ' new video' + useSVideo : '0 new videos';
+   const newS = newSubs.length ? (newH ? ', ' : 'Would sync ') + newSubs.length + ' new subscription' + useSSub : '0 new subscriptions';
+   const newP = newPlaylists.length ? (newH || newS ? ', ' : 'Would sync ') + newPlaylists.length + ' new playlist' + useSPlaylist : '0 new playlists';
+   const rmH = removedHistory.length ? '' + removedHistory.length + ' video' + (removedHistory.length !== 1 ? 's' : '') : '0 videos';
+   const rmS = removedSubs.length ? (rmH ? ', ' : '') + removedSubs.length + ' channel' + (removedSubs.length !== 1 ? 's' : '') : '0 channels';
+   const rmP = removedPlaylists.length ? (rmH || rmS ? ', ' : '') + removedPlaylists.length + ' playlist' + (removedPlaylists.length !== 1 ? 's' : '') : '0 playlists';
+
     if (DRY_RUN) {
-      console.log(`🧪 [DRY RUN] Would sync ${newHistory.length} new video${useSVideo}, ${newSubs.length} new subscription${useSSub}, and ${newPlaylists.length} playlist${useSPlaylist}`);
+      console.log(`🧪 [DRY RUN] Found ${newH}, ${newS}, and ${newP}.`);
+      console.log(`🧪 [DRY RUN] Removing ${rmH}, ${rmS}, and ${rmP}.`);
+      const continuePrompt = await prompt('Do you want a full layout of the diffs? (y/n)', 'n');
+      if (continuePrompt === 'y') {
+        if (newHistory.length) { 
+          console.log('New videos to sync:');
+          for (const line of prettyNewHistory) console.log(line);
+        }
+        if (newSubs.length) {
+          console.log('New subscriptions to sync:');
+          for (const line of prettyNewSubs) console.log(line);
+        }
+        if (newPlaylists.length) {
+          console.log('New playlists to sync:');
+          for (const line of prettyNewPlaylists) console.log(line);
+        }
+        if (removedHistory.length) {
+          console.log('Videos to remove from watch history:');
+          for (const line of prettyRemovedHistory) console.log(line);
+        }
+        if (removedSubs.length) {
+          console.log('Channels to unsubscribe from:');
+          for (const line of prettyRemovedSubs) console.log(line);
+        }
+        if (removedPlaylists.length) {
+          console.log('Playlists to delete:');
+          for (const line of prettyRemovedPlaylists) console.log(line);
+        }
+        if (!newHistory.length && !newSubs.length && !newPlaylists.length && !removedHistory.length && !removedSubs.length && !removedPlaylists.length) {
+          console.log('Nothing to remove or add.');
+        }
+      }
       return;
     }
 

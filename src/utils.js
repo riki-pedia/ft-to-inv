@@ -186,7 +186,7 @@ async function getVideoNameAndAuthor(vid, instance, token) {
       } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return { author: data.author, title: data.title };
+    return { author: data.author || 'Unknown', title: data.title || vid};
   } catch (err) {
      console.warn(`⚠️ Failed to get channel name for ${vid}:`, err.message);
      const errTL = err.message.toLowerCase();
