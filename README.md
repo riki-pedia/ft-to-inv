@@ -32,6 +32,7 @@ You can do a lot with this, but I'm not very good at writing READMEs. Here's a l
 | --cron-schedule | --cron, -cron | Allows you to schedule a run on a cron schedule. If not used with an = or quotes, it checks the next 4-5 args | --cron 0 * * * * |
 | --config | -c | Path to the config file. | -c config.example.jsonc
 | --help | -h, -?, /? | Displays a help message that is only slightly better than this README | -h | 
+| --logs | -l | Specifies whether to log console output to a file. The only name for this is ft-to-inv-(time).log | -l |
 #### Usage with args
 ```
 npx ft-to-inv -t abc123 -i localhost:3000 

@@ -315,6 +315,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     --clear-files             (optional) Clear old import files before starting a new export.
     --clear-config            (optional) Clear the config file before starting a new export. Needs to be used with --clear-files. 
         continued             instead of C:/Users/You/AppData/Roaming/FreeTube/invidious-import.json
+    --logs, -l                (optional) Enable logging to a file. Name is ft-to-inv-(time in epoch).log
                    Usage:
     run once: node --use-system-ca export.js --token YOUR_INVIDIOUS_SID_COOKIE [other options]
     cron job: node --use-system-ca export.js --token YOUR_INVIDIOUS_SID_COOKIE --cron-schedule "*/30 * * * *" [other options]
