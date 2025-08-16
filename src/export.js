@@ -289,8 +289,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   CRON_SCHEDULE      = getArg('--cron-schedule') || getArg('-cron') || getArg('--cron') || resolveEnvVars(['FT_TO_INV_CONFIG_CRON_SCHEDULE', 'CRON_SCHEDULE', 'FT_TO_INV_CRON_SCHEDULE', 'CRON']) || config.cron_schedule || '';
 
   LOGS_BOOLEAN       = resolveFlagArg(args, ['--logs', '-l'], config, 'logs', ['FT_TO_INV_CONFIG_LOGS', 'LOGS', 'FT_TO_INV_LOGS']);
-  LOGS               = LOGS_BOOLEAN ? 'ft-to-inv-' + Date.now() + '.log' : null;
-  console.log(LOGS);
+  LOGS               = LOGS_BOOLEAN ? path.resolve('ft-to-inv-' + Date.now() + '.log') : null;
 
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {

@@ -44,6 +44,7 @@ jobs:
           VERBOSE: true
           INSECURE: true
           DONT_RUN_SETUP: true
+          LOGS: true
         run: |
           node .github/test/mock-invidious.js &
           MOCK_PID=$!
@@ -52,3 +53,10 @@ jobs:
           kill $MOCK_PID
           sleep 1
           # give time to finish
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ft-to-inv-logs
+          path: |
+            ft-to-inv-*.log
+            ci-output.log
