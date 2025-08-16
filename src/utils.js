@@ -196,6 +196,25 @@ async function getVideoNameAndAuthor(vid, instance, token) {
     return { author: 'Unknown', title: vid };
   }
 }
+// function that takes all of the console output, and logs it to a file
+function logConsoleOutput(file, outputArr) {
+    fs.writeFileSync(file, outputArr.join('\n'));
+    console.log(`✅ Logged console output to ${file}`);
+  }
+// c here is consoleOutput in export.js
+function Clog(message, c, err, warn) {
+    c.push(message);
+    if (!err && !warn) {
+        console.log(message);
+    }
+    if (err) {
+        console.error(message);
+    }
+    if (warn) {
+        console.warn(message);
+    }
+}
+
 
 //stripDir goes in export, not used here
 module.exports = {
@@ -207,5 +226,7 @@ module.exports = {
   postToInvidious,
   getChannelName,
   writePlaylistImport,
-  getVideoNameAndAuthor
+  getVideoNameAndAuthor,
+  logConsoleOutput,
+  Clog
 };
