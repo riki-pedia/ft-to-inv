@@ -101,7 +101,8 @@ const defaultConfig = {
   "noSync": false,
   "quiet": false,
   "insecure": false,
-  "cron_schedule": ''
+  "cron_schedule": '',
+  "logs": false
 };
 //comments at the top of the file
 const topComments = [
@@ -195,6 +196,11 @@ const comments = {
       'This will hide all output from the script, including errors',
       'You can also specify this with --quiet, see help for aliases',
     ],
+    "logs": [
+      "accepted values: true or false",
+      "enables logging of the console output",
+      "name cannot be changed from ft-to-inv-(current time).log"
+    ]
     // we have the comments, now we just need to add them to the config object
   };
 function renderConfigWithComments(config, comments, topComments = []) {
@@ -243,6 +249,8 @@ async function runFirstTimeSetup() {
   const dryRun = await prompt('Enable dry run mode (no uploads)? (y/n)', 'n') === 'y';
   const dontShorten = await prompt('Show full paths in logs? (y/n)', 'n') === 'y';
 
+  const logs = await prompt('Enable logging to a file? (y/n)', 'n') === 'y';
+
   let ftDirNormalized = normalizePath(ftDir);
   let exportDirNormalized = normalizePath(exportDir);
    
@@ -256,7 +264,8 @@ async function runFirstTimeSetup() {
     "verbose": verbose,
     "dry_run": dryRun,
     "dont_shorten_paths": dontShorten,
-    "insecure": insecure || false
+    "insecure": insecure || false,
+    "logs": logs
   };
   
   const mergedConfig = {

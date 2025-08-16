@@ -618,9 +618,12 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
          }
         return;
       }
+      let historyCount = 0;
       if (newHistory.length && !HISTORY) {
       for (const videoId of newHistory) {
        try {
+        historyCount++;
+        Clog(`Video ${historyCount}/${newHistory.length}`, consoleOutput);
         const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN);
         const prettyTitle = JSON.stringify(title) || 'Unknown Title';
         const prettyAuthor = JSON.stringify(author) || 'Unknown Author';
@@ -634,8 +637,11 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
       }
     }
   }
+    let subCount = 0;
     for (const sub of newSubs) {
       try {
+        subCount++;
+        Clog(`Channel ${subCount}/${newSubs.length}`, consoleOutput);
         const res = await postToInvidious(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
         const name = await getChannelName(sub, INSTANCE);
         if (!QUIET) {
@@ -653,13 +659,15 @@ const oldPlaylistTitles = new Set(
     .filter(pl => pl && typeof pl.title === 'string' && pl.title.trim() !== '')
     .map(pl => pl.title.toLowerCase())
 );
-
+let plCount = 0;
 try {
 for (const pl of newPlaylists) {
   if (!pl || typeof pl.title !== 'string') {
     Clog(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, consoleOutput, false, true);
     continue;
   }
+  plCount++;
+  Clog(`Playlist ${plCount}/${newPlaylists.length}`, consoleOutput);
   Clog(`ℹ️ Found new playlist: "${pl.title}"`, consoleOutput);
   if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
     Clog(`ℹ️ Skipping existing playlist: "${pl.title}"`, consoleOutput);
@@ -685,10 +693,13 @@ if (playlistsToImport.length > 0) {
 } catch (err) {
   markError('Failed to prepare playlist import', err);
 }   
+let removedHisCnt = 0;
 // Remove watched videos
     if (removedHistory.length) {
      for (const videoId of removedHistory) {
       try {
+        removedHisCnt++;
+        Clog(`Removed video ${removedHisCnt}/${removedHistory.length}`, consoleOutput);
       const res = await postToInvidious(`/auth/history/${videoId}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
         Clog(`🗑️ Removed ${videoId} from watch history (HTTP ${res.code})`, consoleOutput);
@@ -698,9 +709,12 @@ if (playlistsToImport.length > 0) {
       }
     }
   }
+  let removedSubCnt = 0;
     // Unsubscribe from channels
     for (const ucid of removedSubs) {
      try {
+       removedSubCnt++;
+       Clog(`Unsubscribed from ${ucid} (${removedSubCnt}/${removedSubs.length})`, consoleOutput);
       const res = await postToInvidious(`/auth/subscriptions/${ucid}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
        Clog(`👋 Unsubscribed from ${ucid} (HTTP ${res.code})`, consoleOutput);
@@ -709,7 +723,6 @@ if (playlistsToImport.length > 0) {
        markError(`Failed to unsubscribe from ${ucid}`, err);
      }
     }
-
   if (VERBOSE) Clog(`Processing removed playlists...`, consoleOutput);
   // Remove deleted playlists from playlist-import.json
   const importPath = './playlist-import.json';
@@ -721,7 +734,7 @@ if (playlistsToImport.length > 0) {
     importData.playlists = importData.playlists.filter(pl =>
       !removedPlaylists.some(rp => rp.title.toLowerCase() === pl.title.toLowerCase())
     );
-
+    
     fs.writeFileSync(importPath, JSON.stringify(importData, null, 2));
     Clog(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, consoleOutput);
   } catch (err) {
