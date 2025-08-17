@@ -289,7 +289,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   CRON_SCHEDULE      = getArg('--cron-schedule') || getArg('-cron') || getArg('--cron') || resolveEnvVars(['FT_TO_INV_CONFIG_CRON_SCHEDULE', 'CRON_SCHEDULE', 'FT_TO_INV_CRON_SCHEDULE', 'CRON']) || config.cron_schedule || '';
 
   LOGS_BOOLEAN       = resolveFlagArg(args, ['--logs', '-l'], config, 'logs', ['FT_TO_INV_CONFIG_LOGS', 'LOGS', 'FT_TO_INV_LOGS']);
-  LOGS               = LOGS_BOOLEAN ? path.resolve('ft-to-inv-' + Date.now() + '.log') : null;
+  LOGS               = LOGS_BOOLEAN ? path.resolve('ft-to-inv-' + Date.now() + '.log') : undefined;
 
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {
@@ -520,16 +520,16 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
    }
   }
 
-   const newH = newHistory.length ? 'Would sync ' + newHistory.length + ' new video' + useSVideo : '0 new videos';
-   const newS = newSubs.length ? (newH ? ', ' : 'Would sync ') + newSubs.length + ' new subscription' + useSSub : '0 new subscriptions';
-   const newP = newPlaylists.length ? (newH || newS ? ', ' : 'Would sync ') + newPlaylists.length + ' new playlist' + useSPlaylist : '0 new playlists';
+   const newH = newHistory.length ? 'Would sync ' + newHistory.length + ' new video' + useSVideo : '0 new videos, ';
+   const newS = newSubs.length ? (newH ? ', ' : 'Would sync ') + newSubs.length + ' new subscription' + useSSub : '0 new subscriptions, ';
+   const newP = newPlaylists.length ? (newH || newS ? ', and ' : 'Would sync ') + newPlaylists.length + ' new playlist' + useSPlaylist : '0 new playlists';
    const rmH = removedHistory.length ? '' + removedHistory.length + ' video' + (removedHistory.length !== 1 ? 's' : '') : '0 videos';
    const rmS = removedSubs.length ? (rmH ? ', ' : '') + removedSubs.length + ' channel' + (removedSubs.length !== 1 ? 's' : '') : '0 channels';
-   const rmP = removedPlaylists.length ? (rmH || rmS ? ', ' : '') + removedPlaylists.length + ' playlist' + (removedPlaylists.length !== 1 ? 's' : '') : '0 playlists';
+   const rmP = removedPlaylists.length ? (rmH || rmS ? ', and ' : '') + removedPlaylists.length + ' playlist' + (removedPlaylists.length !== 1 ? 's' : '') : '0 playlists';
 
     if (DRY_RUN) {
-      console.log(`🧪 [DRY RUN] Found ${newH}, ${newS}, and ${newP}.`);
-      console.log(`🧪 [DRY RUN] Removing ${rmH}, ${rmS}, and ${rmP}.`);
+      console.log(`🧪 [DRY RUN] ${newHistory.length && newSubs.length && newPlaylists.length ? '' : 'Would add'} ${newH}${newS}${newP}.`);
+      console.log(`🧪 [DRY RUN] Would remove ${rmH}${rmS}${rmP}.`);
       const continuePrompt = await prompt('Do you want a full layout of the diffs? (y/n)', 'n');
       if (continuePrompt === 'y') {
         if (newHistory.length) { 
@@ -560,7 +560,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
           Clog('Nothing to remove or add.', consoleOutput);
         }
       }
-      if (LOGS !== null) {
+      if (LOGS) {
          logConsoleOutput(path.resolve(LOGS), consoleOutput);
         }
       return;
@@ -568,7 +568,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
 
     if (HISTORY && SUBS && PLAYLISTS) {
         Clog('why are you ignoring everything?', consoleOutput);
-        if (LOGS !== null) {
+        if (LOGS) {
          logConsoleOutput(path.resolve(LOGS), consoleOutput);
         }
         return;
@@ -613,7 +613,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
         Clog('ℹ️ No changes to sync, not updating Invidious or export files', consoleOutput);
-        if (LOGS !== null) {
+        if (LOGS) {
          logConsoleOutput(path.resolve(LOGS), consoleOutput);
          }
         return;
@@ -741,7 +741,7 @@ let removedHisCnt = 0;
     markError(`Failed to update ${importPath} after removals`, err);
   }
 }
-    if (LOGS !== null) {
+    if (LOGS) {
   logConsoleOutput(path.resolve(LOGS), consoleOutput);
      }
 
