@@ -4,6 +4,7 @@
     <img alt='CI status' src="https://github.com/riki-pedia/ft-to-inv/actions/workflows/ci.yml/badge.svg?branch=master" />
   </a>
   <br/>
+  
 Takes FreeTube data and exports it to invidious-import.json, where it can be optionally imported to Invidious via the API. You can also schedule runs via the --cron flag, see below.
 ## Installation
 You can get this CLI from `npm`, here's the install:
