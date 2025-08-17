@@ -1,7 +1,7 @@
 # FreeTube to Invidious Exporter
 Takes FreeTube data and exports it to invidious-import.json, where it can be optionally imported to Invidious via the API. You can also schedule runs via the --cron flag, see below.
 ## Installation
-You can get this CLI from npm, here's the install:
+You can get this CLI from `npm`, here's the install:
 ```
 $ npm i -g ft-to-inv
 $ ft-to-inv --first-time-setup
