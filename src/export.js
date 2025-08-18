@@ -520,16 +520,16 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
    }
   }
 
-   const newH = newHistory.length ? 'Would sync ' + newHistory.length + ' new video' + useSVideo : '0 new videos, ';
-   const newS = newSubs.length ? (newH ? ', ' : 'Would sync ') + newSubs.length + ' new subscription' + useSSub : '0 new subscriptions, ';
-   const newP = newPlaylists.length ? (newH || newS ? ', and ' : 'Would sync ') + newPlaylists.length + ' new playlist' + useSPlaylist : '0 new playlists';
-   const rmH = removedHistory.length ? '' + removedHistory.length + ' video' + (removedHistory.length !== 1 ? 's' : '') : '0 videos';
-   const rmS = removedSubs.length ? (rmH ? ', ' : '') + removedSubs.length + ' channel' + (removedSubs.length !== 1 ? 's' : '') : '0 channels';
-   const rmP = removedPlaylists.length ? (rmH || rmS ? ', and ' : '') + removedPlaylists.length + ' playlist' + (removedPlaylists.length !== 1 ? 's' : '') : '0 playlists';
+   const newH = newHistory.length ? `${newHistory.length} video${useSVideo}` : '0 videos';
+   const newS = newSubs.length ? `${newSubs.length} subscription${useSSub}` : '0 subscriptions';
+   const newP = newPlaylists.length ? `${newPlaylists.length} playlist${useSPlaylist}` : '0 playlists';
+   const rmH = removedHistory.length ? `${removedHistory.length} video${removedHistory.length !== 1 ? 's' : ''}` : '0 videos';
+   const rmS = removedSubs.length ? `${removedSubs.length} channel${removedSubs.length !== 1 ? 's' : ''}` : '0 channels';
+   const rmP = removedPlaylists.length ? `${removedPlaylists.length} playlist${removedPlaylists.length !== 1 ? 's' : ''}` : '0 playlists';
 
     if (DRY_RUN) {
-      console.log(`🧪 [DRY RUN] ${newHistory.length && newSubs.length && newPlaylists.length ? '' : 'Would add'} ${newH}${newS}${newP}.`);
-      console.log(`🧪 [DRY RUN] Would remove ${rmH}${rmS}${rmP}.`);
+      console.log(`🧪 [DRY RUN] ${newHistory.length && newSubs.length && newPlaylists.length ? '' : 'Would add'} ${newH}, ${newS}, ${newP}.`);
+      console.log(`🧪 [DRY RUN] Would remove ${rmH}, ${rmS}, ${rmP}.`);
       const continuePrompt = await prompt('Do you want a full layout of the diffs? (y/n)', 'n');
       if (continuePrompt === 'y') {
         if (newHistory.length) { 
