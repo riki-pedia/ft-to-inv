@@ -4,7 +4,7 @@
 // also optionally deletes ft-to-inv.jsonc if the user passes the --config flag
 const fs = require('fs');
 const path = require('path');
-
+const chalk = require('chalk')
 const readline = require('readline');
 // where the script is run rather than __dirname because it points to src/
 const clearDir = path.resolve('./')
@@ -25,7 +25,7 @@ async function clearFiles(configFlag = false) {
     let filesToClear = [];
     const delPrompt = await localPrompt('Delete all import files? (y/n)', 'n')
     if (delPrompt.toLowerCase() !== 'y') {
-      console.log('Aborting file deletion.');
+      console.log(chalk.rgb(143, 17, 17)('Aborting file deletion.'));
       return;
 }
 
@@ -40,10 +40,10 @@ filesToClear.forEach(file => {
   const filePath = path.join(clearDir, file);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
-    console.log(`Deleted ${filePath}`);
+    console.log(chalk.red(`Deleted ${filePath}`));
   }
   else {
-    console.log(`File ${filePath} does not exist, skipping.`);
+    console.log(chalk.yellow(`File ${filePath} does not exist, skipping.`));
   }
 }
 );

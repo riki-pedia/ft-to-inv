@@ -6,4 +6,4 @@ import.old.json
 invidious-import.json
 playlist-import.json
 ft-to-inv-test.jsonc
-# ignore naming change, using for testing
+ft-to-test.jsonc

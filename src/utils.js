@@ -7,9 +7,8 @@ const https = require('https');
 const http = require('http');
 const { loadConfig, normalizePath } = require('./config');
 const { stringify } = require('comment-json');
-let config = loadConfig();
-let OUTPUT_FILE = path.join(config.export_dir || '.', 'invidious-import.json');
-let OLD_EXPORT_PATH = path.join(config.export_dir || '.', 'import.old.json');
+let config = {}
+const chalk = require('chalk')
 // Load a newline-delimited JSON file into an array of objects
 async function loadNDJSON(filePath) {
   const lines = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/);
@@ -25,6 +24,15 @@ async function loadNDJSON(filePath) {
   }
   return results;
 }
+
+async function setConfig(conf) {
+  config = conf
+}
+
+
+let OUTPUT_FILE = path.join(config.export_dir || '.', 'invidious-import.json');
+let OLD_EXPORT_PATH = path.join(config.export_dir || '.', 'import.old.json');
+
 
 // Extract subscription IDs from FreeTube profiles.db lines
 async function extractSubscriptions(profileDbPath) {
@@ -201,17 +209,27 @@ function logConsoleOutput(file, outputArr) {
     fs.writeFileSync(file, outputArr.join('\n'));
     console.log(`✅ Logged console output to ${file}`);
   }
-// c here is consoleOutput in export.js
-function Clog(message, c, err, warn) {
+  /**
+   * Logs a message to the console and a provided output array with optional styling.
+   * @param {string} message - The message to log.
+   * @param {Array<string>} c - The output array to push the message into.
+   * @param {boolean} err - If true, logs the message as an error.
+   * @param {boolean} warn - If true, logs the message as a warning.
+   * @param {string} color - Optional chalk color to style the message.
+   */
+function Clog(message, c, err, warn, color) {
     c.push(message);
-    if (!err && !warn) {
+    if (!err && !warn && !color) {
         console.log(message);
     }
     if (err) {
-        console.error(message);
+        console.error(chalk.red("Error! ") + message);
     }
     if (warn) {
-        console.warn(message);
+        console.warn(chalk.yellow("Warning! ") + message);
+    }
+    if (color !== undefined && color !== null) {
+        console.log(chalk[color](message));
     }
 }
 
@@ -228,5 +246,6 @@ module.exports = {
   writePlaylistImport,
   getVideoNameAndAuthor,
   logConsoleOutput,
-  Clog
+  Clog,
+  setConfig
 };

@@ -74,5 +74,10 @@
   // See https://crontab.guru/ for help with cron patterns
   // You can also specify this with --cron-schedule
   // defaults to '' (empty string) which means it runs once and exits like normal
-  "cron_schedule": ""
+  "cron_schedule": "",
+  // logs
+  // enables logging to a file
+  // i dont want to paste the whole thing from the config file right now
+  // true or false pls
+  "logs": false
 }

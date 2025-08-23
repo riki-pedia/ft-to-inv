@@ -51,7 +51,6 @@ function loadJsonc(filePath) {
     return commentJson.parse(raw);
   } catch (err) {
     console.warn(`⚠️ Failed to load config at ${filePath}: ${err.message}`);
-    console.warn  ("Verbose: this error comes from config.js file, which loads the config file and parses it.")
     return {};
   }
 }
@@ -80,6 +79,13 @@ function resolvePaths(config) {
     OLD_EXPORT_PATH: path.join(exportDir, 'last-export.json'),
   };
 }
+
+function setConfigPathEnv(path) {
+  process.env.CONFIG = path;
+  console.log(`Set CONFIG environment variable to ${path}`);
+  console.log('debug:' + process.env.CONFIG);
+}
+
 // prompt
 async function prompt(question, defaultValue = '') {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -273,7 +279,9 @@ async function runFirstTimeSetup() {
   ...config // user-specified values override defaults
 };
 
-
+  if (configPath !== './ft-to-inv.jsonc' || configPath !== normalizePath('./ft-to-inv.jsonc')) {
+    setConfigPathEnv(configPath);
+  }
   const savePath = ENV_CONFIG_PATH || configPath || path.resolve(DEFAULT_CONFIG_FILENAME);
   const configFileContent = renderConfigWithComments(mergedConfig, comments, topComments);
   await fs.promises.writeFile(savePath, configFileContent);
@@ -285,14 +293,9 @@ async function runFirstTimeSetup() {
 
 }
 
-function loadConfig() {
-  let config
-  const configArg = getArg('--config') || getArg('-c') || getArg('-conf');
-  const configPath =
-    configArg ||
-    ENV_CONFIG_PATH ||
-    path.resolve(DEFAULT_CONFIG_FILENAME);
-   config = configArg ? configArg : configPath;
+function loadConfig(conf) {
+  const config = conf
+  console.log('Loading config from:', config || 'ft-to-inv.jsonc (default)');
   const fileConfig = fs.existsSync(config) ? loadJsonc(config) : {};
   const merged = { ...fileConfig };
 
