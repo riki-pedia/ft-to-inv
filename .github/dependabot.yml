@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"
+    ignore:
+    # dont update chalk becauses i rely on v4 for the non-module version and becauuse i use commonjs
+      - dependency-name: "chalk"
+        versions: ["^4.1.2"]
