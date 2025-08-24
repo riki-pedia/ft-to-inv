@@ -1,17 +1,14 @@
 // utils.js
-// Utility functions for FreeTube → Invidious sync
 
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const http = require('http');
-const { loadConfig, normalizePath } = require('./config');
-const { stringify } = require('comment-json');
+import { readFileSync, writeFileSync, copyFileSync } from 'fs';
+import { join } from 'path';
+import https from 'https';
+import http from 'http';
 let config = {}
-const chalk = require('chalk')
+import chalk from 'chalk';
 // Load a newline-delimited JSON file into an array of objects
-async function loadNDJSON(filePath) {
-  const lines = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/);
+export async function loadNDJSON(filePath) {
+  const lines = readFileSync(filePath, 'utf-8').split(/\r?\n/);
   const results = [];
   for (const line of lines) {
     if (line.trim()) {
@@ -25,17 +22,17 @@ async function loadNDJSON(filePath) {
   return results;
 }
 
-async function setConfig(conf) {
+export async function setConfig(conf) {
   config = conf
 }
 
 
-let OUTPUT_FILE = path.join(config.export_dir || '.', 'invidious-import.json');
-let OLD_EXPORT_PATH = path.join(config.export_dir || '.', 'import.old.json');
+let OUTPUT_FILE = join(config.export_dir || '.', 'invidious-import.json');
+let OLD_EXPORT_PATH = join(config.export_dir || '.', 'import.old.json');
 
 
 // Extract subscription IDs from FreeTube profiles.db lines
-async function extractSubscriptions(profileDbPath) {
+export async function extractSubscriptions(profileDbPath) {
   const profiles = await loadNDJSON(profileDbPath);
   for (const p of profiles) {
     if (p._id === 'allChannels' && Array.isArray(p.subscriptions)) {
@@ -46,24 +43,24 @@ async function extractSubscriptions(profileDbPath) {
 }
 
 // Read previous export JSON (old) safely
-function readOldExport() {
+export function readOldExport() {
   try {
-    return JSON.parse(fs.readFileSync(OLD_EXPORT_PATH, 'utf-8'));
+    return JSON.parse(readFileSync(OLD_EXPORT_PATH, 'utf-8'));
   } catch {
     return { watch_history: [], playlists: [], subscriptions: [] };
   }
 }
 
 // Write new export JSON and update old export file
-function writeNewExport(data) {
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2));
-  fs.copyFileSync(OUTPUT_FILE, OLD_EXPORT_PATH);
+export function writeNewExport(data) {
+  writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2));
+  copyFileSync(OUTPUT_FILE, OLD_EXPORT_PATH);
 }
 
 // Write export JSON without updating old export (no-sync mode)
-function noSyncWrite(outputObj, outputPath, quiet) {
+export function noSyncWrite(outputObj, outputPath, quiet) {
   const json = JSON.stringify(outputObj, null, 2);
-  fs.writeFileSync(outputPath, json);
+  writeFileSync(outputPath, json);
   if (!quiet) console.log(`✅ Wrote export to ${outputPath} (no-sync mode)`);
 }
 let INSECURE = config.insecure || false;
@@ -92,7 +89,7 @@ async function retryPostRequest(path, json, token, instance, insecure, method) {
  * @param {boolean} insecure - Whether to use HTTP instead of HTTPS (default: false), expects a boolean, usually passed by config or cli arg
  * @param {string} method - The HTTP method to use (default: 'POST').
  */
-function postToInvidious(path, json = {}, token, instance, insecure = false, method = 'POST') {
+export function postToInvidious(path, json = {}, token, instance, insecure = false, method = 'POST') {
   const isSecure = !insecure;
   const client = isSecure ? https : http;
   const fullPath = `${instance.replace(/\/$/, '')}/api/v1${path}`;
@@ -146,7 +143,7 @@ function postToInvidious(path, json = {}, token, instance, insecure = false, met
  * @param {string} outputPath - Where to write the file:
  * defaults to './playlist-import.json'
  */
-function writePlaylistImport(playlists, outputPath = './playlist-import.json') {
+export function writePlaylistImport(playlists, outputPath = './playlist-import.json') {
   const minimalImport = {
     version: 1,
     subscriptions: [],
@@ -165,12 +162,12 @@ function writePlaylistImport(playlists, outputPath = './playlist-import.json') {
     playlists
   };
 
-  fs.writeFileSync(outputPath, JSON.stringify(minimalImport, null, 2));
+  writeFileSync(outputPath, JSON.stringify(minimalImport, null, 2));
   console.log(`✅ Playlist import written to ${outputPath}`);
 }
 
 // Fetch channel metadata to get friendly name
-async function getChannelName(ucid, instance = INSTANCE) {
+export async function getChannelName(ucid, instance = INSTANCE) {
   try {
     const url = new URL(`/api/v1/channels/${ucid}`, instance).href;
     const res = await fetch(url, { headers:  {
@@ -185,7 +182,7 @@ async function getChannelName(ucid, instance = INSTANCE) {
     return ucid; // Fallback to ID if failed
   }
 }
-async function getVideoNameAndAuthor(vid, instance, token) {
+export async function getVideoNameAndAuthor(vid, instance, token) {
   try {
     const url = new URL(`/api/v1/videos/${vid}`, instance).href;
     const res = await fetch(url, { headers:  {
@@ -204,48 +201,3 @@ async function getVideoNameAndAuthor(vid, instance, token) {
     return { author: 'Unknown', title: vid };
   }
 }
-// function that takes all of the console output, and logs it to a file
-function logConsoleOutput(file, outputArr) {
-    fs.writeFileSync(file, outputArr.join('\n'));
-    console.log(`✅ Logged console output to ${file}`);
-  }
-  /**
-   * Logs a message to the console and a provided output array with optional styling.
-   * @param {string} message - The message to log.
-   * @param {Array<string>} c - The output array to push the message into.
-   * @param {boolean} err - If true, logs the message as an error.
-   * @param {boolean} warn - If true, logs the message as a warning.
-   * @param {string} color - Optional chalk color to style the message.
-   */
-function Clog(message, c, err, warn, color) {
-    c.push(message);
-    if (!err && !warn && !color) {
-        console.log(message);
-    }
-    if (err) {
-        console.error(chalk.red("Error! ") + message);
-    }
-    if (warn) {
-        console.warn(chalk.yellow("Warning! ") + message);
-    }
-    if (color !== undefined && color !== null) {
-        console.log(chalk[color](message));
-    }
-}
-
-
-//stripDir goes in export, not used here
-module.exports = {
-  loadNDJSON,
-  extractSubscriptions,
-  readOldExport,
-  writeNewExport,
-  noSyncWrite,
-  postToInvidious,
-  getChannelName,
-  writePlaylistImport,
-  getVideoNameAndAuthor,
-  logConsoleOutput,
-  Clog,
-  setConfig
-};

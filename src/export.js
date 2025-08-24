@@ -7,26 +7,34 @@
 // cli args > env > config
 // you can preface env with FT_INV_CONFIG_OPTION, where option is the cli flag you want to pass
 // for example: set FT_TO_INV_CONFIG_INSTANCE=https://invidous.example.com sets the instance flag to be https://invidious.example.com
-const fs = require('fs');
-const path = require('path');
-const { loadConfig, runFirstTimeSetup, getDefaultFreeTubeDir, normalizePath, getEnv , prompt} = require('./config');
-const {
-  loadNDJSON,
-  extractSubscriptions,
-  readOldExport,
-  writeNewExport,
-  noSyncWrite,
-  postToInvidious,
-  getChannelName,
-  writePlaylistImport,
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { resolve, join } from 'path';
+import {
+   loadConfig,
+   runFirstTimeSetup,
+   getDefaultFreeTubeDir,
+   normalizePath,
+   getEnv,
+   prompt 
+} from './config.js';
+import { 
+  loadNDJSON, 
+  extractSubscriptions, 
+  readOldExport, 
+  writeNewExport, 
+  noSyncWrite, 
+  postToInvidious, 
+  getChannelName, 
+  writePlaylistImport, 
   getVideoNameAndAuthor,
-  logConsoleOutput,
-  Clog,
-  setConfig
-} = require('./utils');
-const { resolveConfig } = require('./args');
-const cron = require('node-cron');
-const { clearFiles } = require('./clear-import-files');
+  setConfig,  
+} from './utils.js';
+import { resolveConfig } from './args.js';
+// to lazy to rename all the logs back from Clog right now, this will do
+import { logConsoleOutput, log as Clog } from './logs.js'
+import cron from 'node-cron';
+import { clearFiles } from './clear-import-files.js';
+import hints from './hints.json' with { type: 'json' } 
 
 const args = process.argv.slice(2);
 // cron is the only arg that should reasonably have spaces, so we handle it specially
@@ -126,11 +134,26 @@ async function isExpectedArg(argList = args) {
     .flatMap(e => e.split(',').map(s => s.trim()));
 
   let lastWasValueFlag = false;
+  const skip = new Set(); // indices of args we want to ignore (values/cron parts)
 
-  for (const a of argList) {
+  for (let i = 0; i < argList.length; i++) {
+    if (skip.has(i)) continue;
+
+    const a = argList[i];
+
     if (lastWasValueFlag) {
       lastWasValueFlag = false;
       continue;
+    }
+
+    if (a.startsWith('--cron') || a.startsWith('-cron') || a.startsWith('--cron-schedule')) {
+      // ignore the next 5 cron parts if they look like *, numbers, or step/intervals
+      for (let j = 1; j <= 5; j++) {
+        const nextArg = argList[i + j];
+        if (nextArg && /^(\*|\d+|\*\/\d+|\d+-\d+)$/.test(nextArg)) {
+          skip.add(i + j);
+        }
+      }
     }
 
     if (a.startsWith('--')) {
@@ -141,23 +164,26 @@ async function isExpectedArg(argList = args) {
         process.exit(1);
       }
       if (flagsExpectingValue.includes(cleanArg)) {
-        lastWasValueFlag = true;
+        // only mark next if value not inline (--opt=val)
+        if (eqIndex === -1 && argList[i + 1]) skip.add(i + 1);
       }
     }
     else if (a.startsWith('-') && a.length > 1) {
       if (validShortFlags.includes(a)) {
-        // whole arg is a valid short flag (multi-letter or single)
         if (flagsExpectingValue.includes(a)) {
-          lastWasValueFlag = true;
+          if (argList[i + 1]) skip.add(i + 1);
         }
       } else {
-        // treat as combined single-letter flags
+        // treat as combined single-letter flags: -vd
         const shortArgs = a.slice(1).split('');
         for (const sa of shortArgs) {
           const cleanArg = `-${sa}`;
           if (!flatExpected.includes(cleanArg)) {
             console.error(`❌ Unknown argument: ${cleanArg}`);
             process.exit(1);
+          }
+          if (flagsExpectingValue.includes(cleanArg)) {
+            if (argList[i + 1]) skip.add(i + 1);
           }
         }
       }
@@ -170,6 +196,7 @@ async function isExpectedArg(argList = args) {
 
   return true;
 }
+
 let warn = true;
 let error = true;
 const consoleOutput = []
@@ -209,28 +236,73 @@ function resolveFlagArg(args, aliases, config, configKey, envKey) {
   }
   return false; // Default fallback
 }
-// function to validate cron strings by checking if they has 5 parts, a number or * in each part, or 1 string
-function isValidCron(cronString) {
-  if (typeof cronString !== 'string') return false; // Add this line
-  const parts = cronString.split(' ');
-  if (parts.length !== 5) return false;
-  return parts.every(part => /^\d+$/.test(part) || part === '*');
+async function isValidCron(cronString) {
+  try {
+   return cron.validate(cronString);
+  } catch (err) {
+    return false;
+  }
 }
 // see end of utils for why i moved this here
 function stripDir(p) {
     if (!p || typeof p !== 'string') return p;
     if (DONT_SHORTEN_PATHS) return p;
     const toUnix = x => x.replaceAll('\\', '/');
-    const norm = toUnix(path.resolve(p));
-    const ft = toUnix(path.resolve(FREETUBE_DIR));
-    const ex = toUnix(path.resolve(EXPORT_DIR));
+    const norm = toUnix(resolve(p));
+    const ft = toUnix(resolve(FREETUBE_DIR));
+    const ex = toUnix(resolve(EXPORT_DIR));
     if (ft === ex) {
-      console.warn('⚠️ Warning: FreeTube directory and export directory are the same, path shortening may be ambiguous.');
+      Clog('⚠️ Warning: FreeTube directory and export directory are the same, path shortening may be ambiguous.', consoleOutput, false, true);
     }
     if (norm.startsWith(ft)) return norm.replace(ft, '<FreeTubeDir>');
     if (norm.startsWith(ex)) return norm.replace(ex, '<ExportDir>');
     return norm; 
   }
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min)) + min;
+}
+function startHints() {
+  function scheduleNextHint() {
+    const delay = getRandomInt(10_000, 60_000); // 10s–1m
+    setTimeout(() => {
+      // note: cant be hints.length + 1 because that returns NaN. ill have to update this manually as i add more hints :/
+      const hintNumber = getRandomInt(1, 76);
+      Clog(`💡 ${hints[hintNumber === 76 ? 75 : hintNumber]}`, consoleOutput);
+      scheduleNextHint(); // queue another
+    }, delay);
+  }
+
+  scheduleNextHint(); // kick off the loop
+}
+
+let timesShown = 0;
+async function maybeSchedule() {
+let validCron = await isValidCron(CRON_SCHEDULE);
+if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCron !== true) {
+  // silently fail because the user might not have set a cron schedule
+  return;
+} else {
+  if (timesShown === 0) {
+  console.log(`⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`);
+  console.log('Press Ctrl+C to exit');
+  Clog('Logs will only be saved for the initial run.', consoleOutput, false, true);
+  timesShown++;
+}
+  // run once
+  // runs below main() so we shouldn't call it here, just tell the user
+  Clog('✅ Initial sync complete, now scheduling recurring job...', consoleOutput);
+  startHints();
+  // run on interval
+  cron.schedule(CRON_SCHEDULE, async () => {
+    Clog(`🔄 Running scheduled sync at ${new Date().toLocaleString()}`, consoleOutput);
+   await main().catch(err => {
+      Clog(`❌ Fatal error: ${err}`, consoleOutput, true);
+      process.exit(1);
+    });
+  });
+}
+}
+
 // Main function to run the export and sync process
 async function main() {
   // get the first time setup flag at the top before it's run/skipped
@@ -238,10 +310,10 @@ async function main() {
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
   const ENV_CONFIG_PATH = normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG', 'FT_TO_INV_CONFIG_PATH', 'FT_INV_CONFIG', 'CONFIG']));
   // we parse configPath in config.js, but this gets used for checking if it's the first run
-  const configPath = normalizePath(getArg('--config')) || normalizePath(getArg('-c')) || ENV_CONFIG_PATH || path.resolve('ft-to-inv.jsonc');
-  const exportPath = path.join('./', 'invidious-import.json'); // default export path for first-run check
+  const configPath = normalizePath(getArg('--config')) || normalizePath(getArg('-c')) || ENV_CONFIG_PATH || resolve('ft-to-inv.jsonc');
+  const exportPath = join('./', 'invidious-import.json'); // default export path for first-run check
   let isFirstRun = false;
-  if (!fs.existsSync(configPath)) {
+  if (!existsSync(configPath)) {
     isFirstRun = true;
   }
   // Only run setup if truly first time
@@ -266,15 +338,15 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   // Load/merge CLI args + config file
   // Detect first-run (no config file or no prior export)
   // Assign globals from config
-  EXPORT_DIR = resolveConfig('export_dir', {
+  EXPORT_DIR = await resolveConfig('export_dir', {
     cliNames: ['--export-dir', '-e'], 
     envNames: ['FT_TO_INV_CONFIG_EXPORT_DIR', 'EXPORT_DIR', 'FT_TO_INV_EXPORT_DIR'],
     config: config,
     args: args,
-    fallback: path.resolve('.')
+    fallback: resolve('.')
   }
   )
-  FREETUBE_DIR = resolveConfig('freetube_dir', {
+  FREETUBE_DIR = await resolveConfig('freetube_dir', {
       cliNames: ['--freetube-dir', '-f', '-cd'],
       envNames: ['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'],
       config: config,
@@ -284,26 +356,25 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
      )
   // these files are always those names, not taking args for them
   // if theyre different make a symlink ig
-  PROFILE_PATH = path.join(FREETUBE_DIR, 'profiles.db');
-  HISTORY_PATH = path.join(FREETUBE_DIR, 'history.db');
-  PLAYLIST_PATH = path.join(FREETUBE_DIR, 'playlists.db');
+  PROFILE_PATH = join(FREETUBE_DIR, 'profiles.db');
+  HISTORY_PATH = join(FREETUBE_DIR, 'history.db');
+  PLAYLIST_PATH = join(FREETUBE_DIR, 'playlists.db');
   // this looks trash, if you can make this better please do
   // also if you find a comment that i forgot to delete, specifically ones that say the flags while i transfer, pls open a pr to fix
-  TOKEN = resolveConfig('token', {
+  TOKEN = await resolveConfig('token', {
     cliNames: ['--token', '-t'],
     envNames: ['FT_TO_INV_CONFIG_TOKEN', 'FT_TO_INV_TOKEN', 'TOKEN'],
     config: config,
     args: args,
-  }
-)
-  INSTANCE = resolveConfig('instance', {
+  });
+  INSTANCE = await resolveConfig('instance', {
     cliNames: ['--instance', '-i'],
     envNames: ['FT_TO_INV_CONFIG_INSTANCE', 'INSTANCE', 'FT_TO_INV_INSTANCE'],
     config: config,
     args: args,
     fallback: 'https://invidious.example.com'
   })
-  VERBOSE = resolveConfig('verbose', {
+  VERBOSE = await resolveConfig('verbose', {
     cliNames: ['--verbose', '-v'],
     envNames: ['FT_TO_INV_CONFIG_VERBOSE', 'VERBOSE', 'FT_TO_INV_VERBOSE'],
     config: config,
@@ -311,7 +382,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     isFlag: true
   }
 )
-  DRY_RUN = resolveConfig('dry_run', {
+  DRY_RUN = await resolveConfig('dry_run', {
     cliNames: ['--dry-run'],
     envNames: ['FT_TO_INV_CONFIG_DRY_RUN', 'DRY_RUN', 'FT_TO_INV_DRY_RUN'],
     config: config,
@@ -320,7 +391,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   }
 )
   // --quiet, -q, config.quiet, FT_TO_INV_CONFIG_QUIET, QUIET, FT_TO_INV_QUIET
-  QUIET = resolveConfig('quiet', {
+  QUIET = await resolveConfig('quiet', {
     cliNames: ['--quiet', '-q'],
     envNames: ['FT_TO_INV_CONFIG_QUIET', 'QUIET', 'FT_TO_INV_QUIET'],
     config: config,
@@ -328,14 +399,14 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     isFlag: true
   }
 )
-  INSECURE = resolveConfig('insecure', {
+  INSECURE = await resolveConfig('insecure', {
     cliNames: ['--insecure', '--http'],
     envNames: ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'],
     config: config,
     args: args,
     isFlag: true
   })
-  NOSYNC = resolveConfig('no_sync', {
+  NOSYNC = await resolveConfig('no_sync', {
     cliNames: ['--no-sync'],
     envNames: ['FT_TO_INV_CONFIG_NO_SYNC', 'NOSYNC', 'FT_TO_INV_NOSYNC'],
     config: config,
@@ -343,7 +414,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     isFlag: true
   })
   // --dont-shorten-paths, config.dont_shorten_paths, FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS, DONT_SHORTEN_PATHS, FT_TO_INV_DONT_SHORTEN_PATHS
-  DONT_SHORTEN_PATHS = resolveConfig('dont_shorten_paths', {
+  DONT_SHORTEN_PATHS = await resolveConfig('dont_shorten_paths', {
     cliNames: ['--dont-shorten-paths'],
     envNames: ['FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS', 'DONT_SHORTEN_PATHS', 'FT_TO_INV_DONT_SHORTEN_PATHS'],
     config: config,
@@ -351,21 +422,21 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     isFlag: true
   })
 
-  PLAYLISTS  = resolveConfig('playlists', {
+  PLAYLISTS  = await resolveConfig('playlists', {
     cliNames: ['--playlists', '--dont-include-playlists', '-p'],
     envNames: ['FT_TO_INV_CONFIG_PLAYLISTS', 'PLAYLISTS', 'FT_TO_INV_PLAYLISTS'],
     config: config,
     args: args,
     isFlag: true
   })
-  HISTORY = resolveConfig('history', {
+  HISTORY = await resolveConfig('history', {
     cliNames: ['--history', '--dont-include-history', '-hi'],
     envNames: ['FT_TO_INV_CONFIG_HISTORY', 'HISTORY', 'FT_TO_INV_HISTORY'],
     config: config,
     args: args,
     isFlag: true
   })
-  SUBS = resolveConfig('subscriptions', {
+  SUBS = await resolveConfig('subscriptions', {
     cliNames: ['--subscriptions', '--dont-include-subs', '-s'],
     envNames: ['FT_TO_INV_CONFIG_SUBS', 'SUBS', 'FT_TO_INV_SUBS'],
     config: config,
@@ -373,25 +444,24 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     isFlag: true
   })
 
-  OUTPUT_FILE        = exportPath || path.join(EXPORT_DIR, 'invidious-import.json');
-  OLD_EXPORT_PATH    = path.join(EXPORT_DIR, 'import.old.json');
-  // --cron-schedule, -cron --cron FT_TO_INV_CONFIG_CRON_SCHEDULE, CRON_SCHEDULE, FT_TO_INV_CRON_SCHEDULE, CRON config.cron_schedule || ''
-  CRON_SCHEDULE = resolveConfig('cron_schedule', {
+  OUTPUT_FILE        = exportPath || join(EXPORT_DIR, 'invidious-import.json');
+  OLD_EXPORT_PATH    = join(EXPORT_DIR, 'import.old.json');
+  CRON_SCHEDULE = await resolveConfig('cron_schedule', {
     cliNames: ['--cron-schedule', '-cron', '--cron'],
     envNames: ['FT_TO_INV_CONFIG_CRON_SCHEDULE', 'CRON_SCHEDULE', 'FT_TO_INV_CRON_SCHEDULE', 'CRON'],
     config: config,
     args: args,
-    isFlag: false
+    fallback: ''
   }) || '';
 
-  LOGS_BOOLEAN       = resolveConfig('logs', {
+  LOGS_BOOLEAN       = await resolveConfig('logs', {
      cliNames: ['--logs', '-l'],
      envNames: ['FT_TO_INV_CONFIG_LOGS', 'LOGS', 'FT_TO_INV_LOGS'],
      config: config,
      args: args,
      isFlag: true
   })
-  LOGS               = LOGS_BOOLEAN ? path.resolve('ft-to-inv-' + Date.now() + '.log') : undefined;
+  LOGS               = LOGS_BOOLEAN ? resolve('ft-to-inv-' + Date.now() + '.log') : undefined;
    // leaving this one, exits early
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {
@@ -454,7 +524,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   }
   // Validate required files
   for (const f of [HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH]) {
-    if (!fs.existsSync(f)) {
+    if (!existsSync(f)) {
       Clog(`❌ Required file missing: ${f}`, consoleOutput, err = true);
       consoleOutput.push(`${HISTORY_PATH}, ${PLAYLIST_PATH}, ${PROFILE_PATH}, ${EXPORT_DIR}, ${OLD_EXPORT_PATH}, ${FREETUBE_DIR} (logged for debugging)`, consoleOutput);
       Clog(`❌ Required file missing: ${f}`, consoleOutput, err = true);
@@ -525,13 +595,13 @@ async function sync() {
       subscriptions,
       watch_history,
       preferences: {
-        default_home: "Subscriptions",
+        default_home: "Popular",
         annotations: false,
         autoplay: false,
         dark_mode: "true",
         region: "US",
         quality: "dash",
-        player_style: "youtube",
+        player_style: "invidious",
         watch_history: true,
         max_results: 40
       },
@@ -652,17 +722,11 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
           Clog('Nothing to remove or add.', consoleOutput);
         }
       }
-      if (LOGS) {
-         logConsoleOutput(path.resolve(LOGS), consoleOutput);
-        }
       return;
     }
 
     if (HISTORY && SUBS && PLAYLISTS) {
         Clog('why are you ignoring everything?', consoleOutput);
-        if (LOGS) {
-         logConsoleOutput(path.resolve(LOGS), consoleOutput);
-        }
         return;
       }
     
@@ -705,9 +769,6 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
         Clog('ℹ️ No changes to sync, not updating Invidious or export files', consoleOutput, false, true);
-        if (LOGS) {
-         logConsoleOutput(path.resolve(LOGS), consoleOutput);
-         }
         return;
       }
       let historyCount = 0;
@@ -818,25 +879,21 @@ let removedHisCnt = 0;
   if (VERBOSE) Clog(`Processing removed playlists...`, consoleOutput);
   // Remove deleted playlists from playlist-import.json
   const importPath = './playlist-import.json';
-  if (removedPlaylists.length > 0 && fs.existsSync(importPath)) {
+  if (removedPlaylists.length > 0 && existsSync(importPath)) {
     try {
-    const importData = JSON.parse(fs.readFileSync(importPath, 'utf-8'));
+    const importData = JSON.parse(readFileSync(importPath, 'utf-8'));
     
     // Filter out any playlists matching removed titles (case-insensitive)
     importData.playlists = importData.playlists.filter(pl =>
       !removedPlaylists.some(rp => rp.title.toLowerCase() === pl.title.toLowerCase())
     );
     
-    fs.writeFileSync(importPath, JSON.stringify(importData, null, 2));
+    writeFileSync(importPath, JSON.stringify(importData, null, 2));
     Clog(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, consoleOutput, false, false, 'red');
   } catch (err) {
     markError(`Failed to update ${importPath} after removals`, err);
   }
 }
-    if (LOGS) {
-  logConsoleOutput(path.resolve(LOGS), consoleOutput);
-     }
-
     if (!hadErrors) {
       writeNewExport(output);
       if (!QUIET) {
@@ -859,25 +916,9 @@ let removedHisCnt = 0;
 
 }
 // Kick off
-main().catch(err => {
+await main().catch(err => {
   Clog(`❌ Fatal error: ${err}`, consoleOutput, true);
   process.exit(1);
 });
-let validCron = isValidCron(CRON_SCHEDULE);
-if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === '' && CRON_SCHEDULE.length < 4  || validCron !== true) {
-  // silently fail because the user might not have set a cron schedule
-  return;
-} else {
-  console.log(`⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`);
-  // run once
-  // runs below main() so we shouldn't call it here, just tell the user
-  Clog('✅ Initial sync complete, now scheduling recurring job...', consoleOutput);
-  // run on interval
-  cron.schedule(CRON_SCHEDULE, () => {
-    Clog(`🔄 Running scheduled sync at ${new Date().toLocaleString()}`, consoleOutput);
-    main().catch(err => {
-      Clog(`❌ Fatal error: ${err}`, consoleOutput, true);
-      process.exit(1);
-    });
-  });
-}
+await maybeSchedule();
+logConsoleOutput(resolve(LOGS), consoleOutput);

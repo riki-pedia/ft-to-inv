@@ -1,9 +1,17 @@
 // :skull a 5th helper
 // i dont actually need to import :D
 // Handles both `--flag value` and `--flag=value`
-function getArg(args, names) {
+// was almost safe from the ES nonsense
+const args = process.argv.slice(2);
+const getArg = (args, names) => {
   for (const name of names) {
     const index = args.findIndex(arg => arg === name || arg.startsWith(name + '='));
+    if (name === '--cron' || name === '-cron' || name === '--cron-schedule') {
+     const cronParts = args.slice(index + 1, index + 6);
+     if (cronParts.length >= 5 && cronParts.every(p => /^(\*|\d+)$/.test(p))) {
+       return cronParts.join(' ');
+     }
+    }
     if (index !== -1) {
       const split = args[index].split('=');
       if (split.length > 1) return split[1];
@@ -31,7 +39,7 @@ function resolveEnvVars(names) {
  *         - isFlag: boolean indicating if the option is a flag (true) or a value (false), default false
  * 
  */
-function resolveConfig(key, { cliNames = [], envNames = [], config = {}, args = [], fallback = undefined, isFlag = false }) {
+export async function resolveConfig(key, { cliNames = [], envNames = [], config = {}, args = [], fallback = undefined, isFlag = false }) {
   if (isFlag) {
     // CLI flags
     if (cliNames.some(flag => args.includes(flag))) return true;
@@ -53,4 +61,3 @@ function resolveConfig(key, { cliNames = [], envNames = [], config = {}, args = 
     return fallback;
   }
 }
-module.exports = { resolveConfig };

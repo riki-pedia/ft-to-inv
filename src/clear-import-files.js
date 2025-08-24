@@ -2,15 +2,15 @@
 // useful for testing functions like playlist import or writing configs
 // assumes that export files are in the same directory as this script
 // also optionally deletes ft-to-inv.jsonc if the user passes the --config flag
-const fs = require('fs');
-const path = require('path');
-const chalk = require('chalk')
-const readline = require('readline');
+import { existsSync, unlinkSync } from 'fs';
+import { resolve as _resolve, join } from 'path';
+import chalk from 'chalk';
+import { createInterface } from 'readline';
 // where the script is run rather than __dirname because it points to src/
-const clearDir = path.resolve('./')
-async function localPrompt(question, defaultValue = 'n') {
+const clearDir = _resolve('./')
+export async function localPrompt(question, defaultValue = 'n') {
   return new Promise(resolve => {
-    const rl = readline.createInterface({
+    const rl = createInterface({
       input: process.stdin,
       output: process.stdout
     });
@@ -20,7 +20,7 @@ async function localPrompt(question, defaultValue = 'n') {
     });
   });
 }
-async function clearFiles(configFlag = false) {
+export async function clearFiles(configFlag = false) {
   try {
     let filesToClear = [];
     const delPrompt = await localPrompt('Delete all import files? (y/n)', 'n')
@@ -37,9 +37,9 @@ else {
 filesToClear = ['invidious-import.json', 'import.old.json', 'playlist-import.json'];
 }
 filesToClear.forEach(file => {
-  const filePath = path.join(clearDir, file);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+  const filePath = join(clearDir, file);
+  if (existsSync(filePath)) {
+    unlinkSync(filePath);
     console.log(chalk.red(`Deleted ${filePath}`));
   }
   else {
@@ -50,7 +50,4 @@ filesToClear.forEach(file => {
 } catch (err) {
   console.error('Error clearing files:', err);
 }
-}
-module.exports = {
-  clearFiles
-}
+};

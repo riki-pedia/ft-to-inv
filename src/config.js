@@ -1,8 +1,8 @@
 // fine ill make a helper
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const commentJson = require('comment-json');
+import { readFileSync, promises, existsSync } from 'fs';
+import { join, normalize, resolve as _resolve } from 'path';
+import { createInterface } from 'readline';
+import { parse } from 'comment-json';
 
 const args = process.argv.slice(2);
 const getArg = (name, fallback = null) => {
@@ -18,7 +18,7 @@ const getArg = (name, fallback = null) => {
  * @param {string} option - The name of the environment variable to retrieve.
  * @returns {string|undefined} - The value of the environment variable, or undefined if not set.
  */
-function getEnv(option) {
+export function getEnv(option) {
   return process.env[option] || undefined;
 }
 const DEFAULT_CONFIG_FILENAME = 'ft-to-inv.jsonc';
@@ -34,61 +34,65 @@ function detectOs() {
   return 'unknown';
 }
 
-function getDefaultFreeTubeDir() {
+export function getDefaultFreeTubeDir() {
   const os = detectOs();
   const home = process.env.HOME || process.env.USERPROFILE;
   const appData = process.env.APPDATA;
   if (!home && os !== 'windows') return  null;
-  if (os === 'windows') return appData ? path.join(appData, 'FreeTube') : null;
-  if (os === 'linux') return path.join(home, '.config', 'FreeTube');
-  if (os === 'macos') return path.join(home, 'Library', 'Application Support', 'FreeTube');
+  if (os === 'windows') return appData ? join(appData, 'FreeTube') : null;
+  if (os === 'linux') return join(home, '.config', 'FreeTube');
+  if (os === 'macos') return join(home, 'Library', 'Application Support', 'FreeTube');
   if (os === 'unknown') return null;
   return null;
 }
 function loadJsonc(filePath) {
   try {
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    return commentJson.parse(raw);
+    const raw = readFileSync(filePath, 'utf-8');
+    return parse(raw);
   } catch (err) {
     console.warn(`⚠️ Failed to load config at ${filePath}: ${err.message}`);
     return {};
   }
 }
-function normalizePath(inputPath) {
+export function normalizePath(inputPath) {
   if (typeof inputPath !== 'string') return '';
   if (!inputPath) return '';
   if (inputPath === '.' || inputPath === './' && detectOs() === 'windows') {
     return '.\\';
   }
   if (detectOs() === 'windows') {
-    return path.normalize(inputPath.replace(/\//g, '\\'));
+    return normalize(inputPath.replace(/\//g, '\\'));
   }
-  return path.normalize(inputPath);
+  return normalize(inputPath);
 }
 // stopped using this in favor of hardcoding in export.js
 // but vs still says it's used, so i'm not removing it yet
-function resolvePaths(config) {
+export function resolvePaths(config) {
   const base = normalizePath(config.freetube_dir || getDefaultFreeTubeDir() || '');
   const exportDir = normalizePath(config.export_dir || '.');
   return {
-    HISTORY_PATH: path.join(base, 'history.db'),
-    PLAYLIST_PATH: path.join(base, 'playlists.db'),
-    PROFILE_PATH: path.join(base, 'profiles.db'),
+    HISTORY_PATH: join(base, 'history.db'),
+    PLAYLIST_PATH: join(base, 'playlists.db'),
+    PROFILE_PATH: join(base, 'profiles.db'),
     EXPORT_DIR: exportDir,
-    OUTPUT_FILE: path.join(exportDir, 'invidious-import.json'),
-    OLD_EXPORT_PATH: path.join(exportDir, 'last-export.json'),
+    OUTPUT_FILE: join(exportDir, 'invidious-import.json'),
+    OLD_EXPORT_PATH: join(exportDir, 'last-export.json'),
   };
 }
 
 function setConfigPathEnv(path) {
   process.env.CONFIG = path;
   console.log(`Set CONFIG environment variable to ${path}`);
-  console.log('debug:' + process.env.CONFIG);
+  // lowk forgot about the debug log here
 }
-
+// checks if the prompts down below return y/n
+async function checkBoolean(prompt) {
+    if (prompt !== 'y' && prompt !== 'n') return false;
+    return true;
+}
 // prompt
-async function prompt(question, defaultValue = '') {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+export async function prompt(question, defaultValue = '') {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
   return new Promise(resolve => {
     rl.question(`${question}${defaultValue ? ` [${defaultValue}]` : ''}: `, answer => {
       rl.close();
@@ -240,7 +244,7 @@ function detectHttps(url) {
   if (url.startsWith('http://')) return (insecure = true);
   return false;
 }
-async function runFirstTimeSetup() {
+export async function runFirstTimeSetup() {
   
   console.log('\n🛠 First-time setup: Let\'s configure your FreeTube → Invidious sync');
 
@@ -251,11 +255,15 @@ async function runFirstTimeSetup() {
 
   const configPath = await prompt('Where do you want to save this config file?', './ft-to-inv.jsonc');
 
-  const verbose = await prompt('Enable verbose output? (y/n)', 'n') === 'y';
-  const dryRun = await prompt('Enable dry run mode (no uploads)? (y/n)', 'n') === 'y';
-  const dontShorten = await prompt('Show full paths in logs? (y/n)', 'n') === 'y';
+  let verbose = await prompt('Enable verbose output? (y/n)', 'n') === 'y';
+  if (!checkBoolean(verbose)) console.log('Invalid input, expected y or n, defaulting to n');
+  let dryRun = await prompt('Enable dry run mode (no uploads)? (y/n)', 'n') === 'y';
+  if (!checkBoolean(dryRun)) console.log('Invalid input, expected y or n, defaulting to n');
+  let dontShorten = await prompt('Show full paths in logs? (y/n)', 'n') === 'y';
+  if (!checkBoolean(dontShorten)) console.log('Invalid input, expected y or n, defaulting to n');
 
-  const logs = await prompt('Enable logging to a file? (y/n)', 'n') === 'y';
+  let logs = await prompt('Enable logging to a file? (y/n)', 'n') === 'y';
+  if (!checkBoolean(logs)) console.log('Invalid input, expected y or n, defaulting to n');
 
   let ftDirNormalized = normalizePath(ftDir);
   let exportDirNormalized = normalizePath(exportDir);
@@ -282,9 +290,9 @@ async function runFirstTimeSetup() {
   if (configPath !== './ft-to-inv.jsonc' || configPath !== normalizePath('./ft-to-inv.jsonc')) {
     setConfigPathEnv(configPath);
   }
-  const savePath = ENV_CONFIG_PATH || configPath || path.resolve(DEFAULT_CONFIG_FILENAME);
+  const savePath = ENV_CONFIG_PATH || configPath || _resolve(DEFAULT_CONFIG_FILENAME);
   const configFileContent = renderConfigWithComments(mergedConfig, comments, topComments);
-  await fs.promises.writeFile(savePath, configFileContent);
+  await promises.writeFile(savePath, configFileContent);
   console.log(`✅ Config saved to ${savePath}`);
   console.log('✅ Config initialized successfully.');
   console.log('👉 Please run the command again to start syncing.');
@@ -293,21 +301,11 @@ async function runFirstTimeSetup() {
 
 }
 
-function loadConfig(conf) {
+export function loadConfig(conf) {
   const config = conf
   console.log('Loading config from:', config || 'ft-to-inv.jsonc (default)');
-  const fileConfig = fs.existsSync(config) ? loadJsonc(config) : {};
+  const fileConfig = existsSync(config) ? loadJsonc(config) : {};
   const merged = { ...fileConfig };
 
   return merged;
 }
-
-module.exports = {
-  loadConfig,
-  runFirstTimeSetup,
-  resolvePaths,
-  normalizePath,
-  getDefaultFreeTubeDir,
-  getEnv,
-  prompt
-};

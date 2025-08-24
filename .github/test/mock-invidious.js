@@ -2,10 +2,10 @@
 // used for the ci workflow
 // starts a webserver on port 9999 or the port specified in the MOCK_PORT environment variable
 // then it handles requests to the correct endpoints for addition/deletion
-const http = require('http');
+import { createServer } from 'http';
 const PORT = process.env.MOCK_PORT || 9999;
 
-const server = http.createServer((req, res) => {
+const server = createServer((req, res) => {
   // CORS for safety in browser-like calls
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');

@@ -59,10 +59,12 @@ The config is a simple jsonc file, here's an excerpt:
 {
   "token":"abc123",
   "instance":"http://localhost:3000",
-  "verbose":"true",
-  "dont_shorten_paths":"false"
+  "verbose": true,
+  "dont_shorten_paths": false
 }
 ```
 If you need help with any of the config options, there's comments in the config file, and there's a help menu. If there's anything else, please open an issue on the repo.
 ## Contributing
 This repo follows the standard approach to contributing, just make a fork of the repo and submit a PR. 
+## License
+<a href="https://github.com/riki-pedia/ft-to-inv/blob/master/LICENSE"> MIT </a>
