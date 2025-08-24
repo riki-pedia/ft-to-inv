@@ -27,7 +27,8 @@ import {
   getChannelName, 
   writePlaylistImport, 
   getVideoNameAndAuthor,
-  setConfig,  
+  setConfig,
+  retryPostRequest,  
 } from './utils.js';
 import { resolveConfig } from './args.js';
 // to lazy to rename all the logs back from Clog right now, this will do
@@ -780,7 +781,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
         const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN);
         const prettyTitle = JSON.stringify(title) || 'Unknown Title';
         const prettyAuthor = JSON.stringify(author) || 'Unknown Author';
-       const res = await postToInvidious(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
+       const res = await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
        if (!QUIET) {
        Clog(`✅ Marked ${prettyTitle} by ${prettyAuthor} as watched (HTTP ${res.code})`, consoleOutput, false, false, 'green');
        }
@@ -795,7 +796,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
       try {
         subCount++;
         Clog(`Channel ${subCount}/${newSubs.length}`, consoleOutput);
-        const res = await postToInvidious(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
+        const res = await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
         const name = await getChannelName(sub, INSTANCE);
         if (!QUIET) {
           Clog(`📺 Subscribed to ${name} (${sub}) with HTTP ${res.code}`, consoleOutput, false, false, 'green');
@@ -853,7 +854,7 @@ let removedHisCnt = 0;
       try {
         removedHisCnt++;
         Clog(`Removed video ${removedHisCnt}/${removedHistory.length}`, consoleOutput, false, false, 'red');
-      const res = await postToInvidious(`/auth/history/${videoId}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
+      const res = await retryPostRequest(`/auth/history/${videoId}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
         Clog(`🗑️ Removed ${videoId} from watch history (HTTP ${res.code})`, consoleOutput);
       }
@@ -868,7 +869,7 @@ let removedHisCnt = 0;
      try {
        removedSubCnt++;
        Clog(`Unsubscribed from ${ucid} (${removedSubCnt}/${removedSubs.length})`, consoleOutput);
-      const res = await postToInvidious(`/auth/subscriptions/${ucid}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
+      const res = await retryPostRequest(`/auth/subscriptions/${ucid}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
        Clog(`👋 Unsubscribed from ${ucid} (HTTP ${res.code})`, consoleOutput, false, false, 'red');
       }

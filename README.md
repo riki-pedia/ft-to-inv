@@ -9,8 +9,8 @@ Takes FreeTube data and exports it to invidious-import.json, where it can be opt
 ## Installation
 You can get this CLI from `npm`, here's the install:
 ```
-$ npm i -g ft-to-inv
-$ ft-to-inv --first-time-setup
+npm i -g ft-to-inv
+ft-to-inv --first-time-setup
 ```
 You can also clone the repo and run via `node`
 ```

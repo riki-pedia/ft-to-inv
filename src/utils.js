@@ -5,7 +5,6 @@ import { join } from 'path';
 import https from 'https';
 import http from 'http';
 let config = {}
-import chalk from 'chalk';
 // Load a newline-delimited JSON file into an array of objects
 export async function loadNDJSON(filePath) {
   const lines = readFileSync(filePath, 'utf-8').split(/\r?\n/);
@@ -66,18 +65,24 @@ export function noSyncWrite(outputObj, outputPath, quiet) {
 let INSECURE = config.insecure || false;
 let INSTANCE = config.instance;
 let TOKEN = config.token;
-let retryCount = 0;
-async function retryPostRequest(path, json, token, instance, insecure, method) {
-  return new Promise((resolve, reject) => {
-    const attemptRequest = async () => {
-      while (retryCount < 3) {
-        retryCount++;
-        await postToInvidious(path, json, token, instance, insecure, method);
-        
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+export async function retryPostRequest(path, json, token, instance, insecure, method, maxRetries = 4) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await postToInvidious(path, json, token, instance, insecure, method);
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
+        console.warn(`⚠️ Attempt ${attempt} failed (${err.message}), retrying in ${delay / 1000}s...`);
+        await sleep(delay);
       }
-    };
-    attemptRequest();
-  });
+    }
+  }
+  throw new Error(`❌ All ${maxRetries - 1} retries failed. Last error:\n ${lastError.message}`);
 }
 
 /**
@@ -93,7 +98,8 @@ export function postToInvidious(path, json = {}, token, instance, insecure = fal
   const isSecure = !insecure;
   const client = isSecure ? https : http;
   const fullPath = `${instance.replace(/\/$/, '')}/api/v1${path}`;
-  const payload = JSON.stringify(json ?? {}); 
+  const payload = JSON.stringify(json ?? {});
+
   return new Promise((resolve, reject) => {
     const req = client.request(fullPath, {
       method,
@@ -105,21 +111,17 @@ export function postToInvidious(path, json = {}, token, instance, insecure = fal
     }, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
-      res.on('end', async () => {
-        const bodyLowercase = body.toLowerCase() 
+      res.on('end', () => {
+        const bodyLowercase = body.toLowerCase();
         if (res.statusCode === 403 && bodyLowercase.includes('request must be authenticated')) {
-          console.log(`⚠️ Invidious API request failed: Either you have a bad token or the api is disabled. If the api is disabled, try using NO-SYNC mode and upload the invidious-import.json file manually through this url: 
-            ${instance}/data_control.`);
+          console.log(`⚠️ Invidious API request failed: bad token or API disabled. 
+If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${instance}/data_control`);
+          return reject(new Error(`Authentication error (403): ${body}`));
         }
-        if (res.statusCode >= 400) {
-          console.error(`❌ Invidious API request failed with HTTP ${res.statusCode}: ${body}`);
-        } else {
-          resolve({ code: res.statusCode, body });
+        if (res.statusCode >= 400 || (bodyLowercase.includes('error') && res.statusCode !== 404)) {
+          return reject(new Error(`HTTP ${res.statusCode}: ${body}`));
         }
-        if (bodyLowercase.includes('error') && res.statusCode !== 404) {
-          console.log(`request failed, retrying... (${retryCount})`);
-          await retryPostRequest(path, json, token, instance, insecure, method);
-        }
+        resolve({ code: res.statusCode, body });
       });
     });
     req.on('error', reject);
@@ -127,6 +129,7 @@ export function postToInvidious(path, json = {}, token, instance, insecure = fal
     req.end();
   });
 }
+
 
 /**
  * Writes a standalone playlist-import.json file for Invidious
