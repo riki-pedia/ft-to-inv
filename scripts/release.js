@@ -11,6 +11,8 @@ function run(cmd) {
   execSync(cmd, { stdio: "inherit" });
 }
 
+const releaseName = path.resolve('../RELEASE.md');
+
 const pkgPath = path.resolve("package.json");
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 let version = pkg.version;
@@ -53,13 +55,6 @@ async function bumpIfNeeded() {
 
 async function main() {
   await bumpIfNeeded();
-
-  // --- Prompt for release notes ---
-  let releaseNotes = await prompt("Enter release notes (Markdown supported)", "");
-  if (!releaseNotes.trim()) {
-    releaseNotes = `Release ${version}`;
-  }
-
   // --- Step 1: publish to GitHub Packages ---
   const origName = pkg.name;
   pkg.name = "@riki-pedia/ft-to-inv";
@@ -75,9 +70,11 @@ async function main() {
   run(`git commit -a -m "chore: release v${version}. ran by automation script"`)
   run(`git tag v${version}`);
   run("git push --tags git@github.com:riki-pedia/ft-to-inv.git");
+  // need this to push on master
+  run(`git push git@github.com:riki-pedia/ft-to-inv.git`);
 
   // --- Step 4: GitHub release ---
-  run(`gh release create v${version} --title "Release v${version}" --notes "${releaseNotes}"`);
+  run(`gh release create v${version} --title "Release v${version}" -F ${releaseName}`);
 
   console.log(`✅ Release v${version} created successfully!`);
 
