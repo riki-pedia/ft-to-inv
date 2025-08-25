@@ -4,14 +4,13 @@ import fs from "fs";
 import { execSync } from "child_process";
 import { Octokit } from "octokit";
 import path from 'path'
-import { prompt } from '../src/config.js'
 
 function run(cmd) {
   console.log(`▶️ ${cmd}`);
   execSync(cmd, { stdio: "inherit" });
 }
 
-const releaseName = path.resolve('../RELEASE.md');
+const releaseName = path.resolve('RELEASE.md');
 
 const pkgPath = path.resolve("package.json");
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
@@ -74,6 +73,7 @@ async function main() {
   run(`git push git@github.com:riki-pedia/ft-to-inv.git`);
 
   // --- Step 4: GitHub release ---
+  // note: files are read from the dir the command is run from, not where the script is
   run(`gh release create v${version} --title "Release v${version}" -F ${releaseName}`);
 
   console.log(`✅ Release v${version} created successfully!`);
