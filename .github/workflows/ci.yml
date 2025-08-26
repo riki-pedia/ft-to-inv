@@ -36,9 +36,8 @@ jobs:
         env:
           MOCK_PORT: 9999
           INSTANCE: http://127.0.0.1:9999
-          # doesnt matter, we have a fake server
-          # should probably sanitize this actually
-          TOKEN: a
+          # SANITIZED!
+          TOKEN: abnghjksdhghjukzdbghjkasdbgjkhasdbgukhjasdbgkhjasdbghjadsb=
           EXPORT_DIR: ./exports
           FREETUBE_DIR: ./dummy-ft
           VERBOSE: true
