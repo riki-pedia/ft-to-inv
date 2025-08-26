@@ -45,8 +45,11 @@ async function bumpIfNeeded() {
     version = `${major}.${minor}.${patch + 1}`;
     pkg.version = version;
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-    run(`git add package.json`);
-    run(`git commit -m "chore: bump version to ${version}. ran by automation script"`);
+    // give time for write
+    setTimeout(() => {
+      run(`git add package.json`);
+      run(`git commit -m "chore: bump version to ${version}. ran by automation script"`);
+    }, 100);
   } else {
     console.log(`✅ package.json version ${version} is ahead of latest tag (${latest})`);
   }
