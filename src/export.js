@@ -7,6 +7,7 @@
 // cli args > env > config
 // you can preface env with FT_INV_CONFIG_OPTION, where option is the cli flag you want to pass
 // for example: set FT_TO_INV_CONFIG_INSTANCE=https://invidous.example.com sets the instance flag to be https://invidious.example.com
+// THIS FILES 975 LINES WHAT HAVE I DONE
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
 import {
@@ -32,10 +33,11 @@ import {
 } from './utils.js';
 import { resolveConfig } from './args.js';
 // to lazy to rename all the logs back from Clog right now, this will do
-import { logConsoleOutput, log as Clog } from './logs.js'
+import { logConsoleOutput, log } from './logs.js'
 import cron from 'node-cron';
 import { clearFiles } from './clear-import-files.js';
 import hints from './hints.json' with { type: 'json' } 
+import { sanitize } from './sanitize.js';
 
 const args = process.argv.slice(2);
 // cron is the only arg that should reasonably have spaces, so we handle it specially
@@ -128,6 +130,12 @@ const flagsExpectingValue = [
 const validShortFlags = [
   '-t', '-c', '-e', '-f', '-cd', '-cron', '-i', '-fts', '-drs', '-h', '-?', '-q', '-v', '-p', '-hi', '-s', '-l'
 ]
+const validPosArgs = [
+  'token', 'help', 'instance', 'verbose', 'dry-run', 'quiet', 'insecure', 'no-sync', 'export-dir', 'freetube-dir', 'cron-schedule', 'dont-shorten-paths', 'first-time-setup', 'dont-run-setup', 'config', 'logs', 'history', 'playlists', 'subscriptions', 'test'
+]
+const posArgsExpectingValue = [
+  'token', 'instance', 'export-dir', 'freetube-dir', 'cron-schedule', 'config', 'help', 
+]
 // gets args param from something like process.argv and checks it against expectedArgs
 // if its not expected, we exit early with an error
 async function isExpectedArg(argList = args) {
@@ -189,9 +197,17 @@ async function isExpectedArg(argList = args) {
         }
       }
     }
+    else if (validPosArgs.includes(a)) {
+        if (posArgsExpectingValue.includes(a)) {
+          if (argList[i + 1]) skip.add(i + 1);
+        }
+        else {
+          skip.add(i); // standalone positional arg, no value expected
+        }
+      }
     else {
       console.error(`❌ Unexpected positional argument: ${a}`);
-      process.exit(1);
+      //process.exit(1);
     }
   }
 
@@ -203,7 +219,7 @@ let error = true;
 const consoleOutput = []
 
 // -- Globals (to be assigned in bootstrap) --
-let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE, DONT_SHORTEN_PATHS;
+let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHEDULE, DONT_SHORTEN_PATHS, HELPCMD;
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH;
 let OUTPUT_FILE, OLD_EXPORT_PATH;
 let FIRST_TIME_SETUP = false; // flag to indicate if we should run the first-time setup
@@ -253,7 +269,7 @@ function stripDir(p) {
     const ft = toUnix(resolve(FREETUBE_DIR));
     const ex = toUnix(resolve(EXPORT_DIR));
     if (ft === ex) {
-      Clog('⚠️ Warning: FreeTube directory and export directory are the same, path shortening may be ambiguous.', consoleOutput, false, true);
+      log('⚠️ Warning: FreeTube directory and export directory are the same, path shortening may be ambiguous.', { err: 'warning' });
     }
     if (norm.startsWith(ft)) return norm.replace(ft, '<FreeTubeDir>');
     if (norm.startsWith(ex)) return norm.replace(ex, '<ExportDir>');
@@ -268,7 +284,7 @@ function startHints() {
     setTimeout(() => {
       // note: cant be hints.length + 1 because that returns NaN. ill have to update this manually as i add more hints :/
       const hintNumber = getRandomInt(1, 76);
-      Clog(`💡 ${hints[hintNumber === 76 ? 75 : hintNumber]}`, consoleOutput);
+      log(`💡 ${hints[hintNumber === 76 ? 75 : hintNumber]}`);
       scheduleNextHint(); // queue another
     }, delay);
   }
@@ -286,18 +302,18 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
   if (timesShown === 0) {
   console.log(`⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`);
   console.log('Press Ctrl+C to exit');
-  Clog('Logs will only be saved for the initial run.', consoleOutput, false, true);
+  log('Logs will only be saved for the initial run.', { err: 'warning' });
   timesShown++;
 }
   // run once
   // runs below main() so we shouldn't call it here, just tell the user
-  Clog('✅ Initial sync complete, now scheduling recurring job...', consoleOutput);
+  log('✅ Initial sync complete, now scheduling recurring job...');
   startHints();
   // run on interval
   cron.schedule(CRON_SCHEDULE, async () => {
-    Clog(`🔄 Running scheduled sync at ${new Date().toLocaleString()}`, consoleOutput);
+    log(`🔄 Running scheduled sync at ${new Date().toLocaleString()}`);
    await main().catch(err => {
-      Clog(`❌ Fatal error: ${err}`, consoleOutput, true);
+      log(`❌ Fatal error: ${err}`, { err: 'error' });
       process.exit(1);
     });
   });
@@ -463,7 +479,29 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
      isFlag: true
   })
   LOGS               = LOGS_BOOLEAN ? resolve('ft-to-inv-' + Date.now() + '.log') : undefined;
-   // leaving this one, exits early
+  // intended for cases like `ft-to-inv help instance`
+  HELPCMD            = await resolveConfig('help', {
+     config: config,
+     args: args,
+     isFlag: false,
+     positionalArg: 'help',
+     fallback: undefined
+  });
+   sanitize({
+    token: TOKEN,
+    instance: INSTANCE,
+    export_dir: EXPORT_DIR,
+    freetube_dir: FREETUBE_DIR,
+    cron: CRON_SCHEDULE
+   },
+   {
+    token: true,
+    instance: true,
+    export_dir: true,
+    freetube_dir: true,
+    cron: true
+   })
+  // leaving this one, exits early
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {
    console.log(
@@ -518,34 +556,57 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   )
   process.exit(0);
   }
+  
+  if (HELPCMD) {
+    const h = HELPCMD.toLowerCase();
+    if (h === 'instance') {
+      console.log(
+      `Instance:
+        Your Invidious instance URL. Expects a valid url, like http://localhost:3000
+       Usage:
+        ft-to-inv instance
+       Aliases:
+        --instance, -i
+        FT_TO_INV_CONFIG_INSTANCE, INSTANCE, FT_TO_INV_INSTANCE
+        ft-to-inv instance
+       Expects a valid webserver URL, anything resolvable by the host
+       Can be in either http or https
+       You can specify a port like this:
+       ft-to-inv instance http://localhost:3000`);
+    } else if (h === 'token') {
+      log(`🔑 Token: ${TOKEN}`);
+    } 
+  }
+  
+  
   await isExpectedArg(args);
   if (QUIET && VERBOSE) {
-    Clog('❌ Conflicting options: --quiet and --verbose', consoleOutput);
+    log('❌ Conflicting options: --quiet and --verbose', { err: 'error' });
     process.exit(1);
   }
   // Validate required files
   for (const f of [HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH]) {
     if (!existsSync(f)) {
-      Clog(`❌ Required file missing: ${f}`, consoleOutput, err = true);
+      log(`❌ Required file missing: ${f}`, { err: 'error' });
       consoleOutput.push(`${HISTORY_PATH}, ${PLAYLIST_PATH}, ${PROFILE_PATH}, ${EXPORT_DIR}, ${OLD_EXPORT_PATH}, ${FREETUBE_DIR} (logged for debugging)`, consoleOutput);
-      Clog(`❌ Required file missing: ${f}`, consoleOutput, err = true);
+      log(`❌ Required file missing: ${f}`, { err: 'error' });
       process.exit(1);
     }
   }
   if (!TOKEN && !DRY_RUN && !NOSYNC) {
-    Clog('❌ No token specified.', consoleOutput, err = true);
+    log('❌ No token specified.', { err: 'error' });
     process.exit(1);
   }
   if (VERBOSE) {
-    Clog(`🌐 Instance: ${INSTANCE}`, consoleOutput);
-    Clog('📂 Paths:', consoleOutput);
-    Clog(`   FreeTube data directory: ${FREETUBE_DIR}`, consoleOutput);
-    Clog(`   Export directory: ${EXPORT_DIR}`, consoleOutput);
-    Clog(`   History: ${stripDir(HISTORY_PATH)}`, consoleOutput);
-    Clog(`   Playlists: ${stripDir(PLAYLIST_PATH)}`, consoleOutput);
-    Clog(`   Profiles: ${stripDir(PROFILE_PATH)}`, consoleOutput);
-    Clog(`   Export → ${stripDir(OUTPUT_FILE)}`, consoleOutput);
-    Clog(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`, consoleOutput);
+    log(`🌐 Instance: ${INSTANCE}`, { err: 'info' });
+    log('📂 Paths:', { err: 'info' });
+    log(`   FreeTube data directory: ${FREETUBE_DIR}`, { err: 'info' });
+    log(`   Export directory: ${EXPORT_DIR}`, { err: 'info' });
+    log(`   History: ${stripDir(HISTORY_PATH)}`, { err: 'info' });
+    log(`   Playlists: ${stripDir(PLAYLIST_PATH)}`, { err: 'info' });
+    log(`   Profiles: ${stripDir(PROFILE_PATH)}`, { err: 'info' });
+    log(`   Export → ${stripDir(OUTPUT_FILE)}`, { err: 'info' });
+    log(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`, { err: 'info' });
   }
 
   // Now call sync
@@ -556,7 +617,7 @@ function certErrorHint(err) {
       // node errors like UNABLE_TO_VERIFY_LEAF_SIGNATURE don't get included in the error object, this is all we get, but the full error is in the console
       // error: unable to verify the first certificate; if the root ca is installed locally, try running node.js with --use-system-ca
       if (message.includes("unable to verify the first certificate")) {
-        Clog('⚠️ This may be due to an invalid or self-signed certificate. Try running with --use-system-ca or setting the NODE_EXTRA_CA_CERTS environment variable.', consoleOutput, error);
+        log('⚠️ This may be due to an invalid or self-signed certificate. Try running with --use-system-ca or setting the NODE_EXTRA_CA_CERTS environment variable.', { err: 'warning' });
       }
       else return;
     }
@@ -610,19 +671,19 @@ async function sync() {
     };
     let historyjson, playlistsjson, subscriptionsjson;
     if (HISTORY) {
-      Clog('Ignoring history due to passing ignore history in', consoleOutput);
+      log('Ignoring history due to passing ignore history in');
        historyjson = {};
     }
     if (PLAYLISTS) {
-      Clog('Ignoring playlists due to passing ignore playlists in', consoleOutput);
+      log('Ignoring playlists due to passing ignore playlists in');
        playlistsjson = {};
     }
     if (SUBS) {
-      Clog('Ignoring subscriptions due to passing ignore subscriptions in', consoleOutput);
+      log('Ignoring subscriptions due to passing ignore subscriptions in');
       subscriptionsjson = {};
     }
 
-   if (VERBOSE) Clog(`Calculating diffs...`, consoleOutput);
+   if (VERBOSE) log(`Calculating diffs...`, {err: 'info'});
 
   const old = readOldExport();
   const safeOldPlaylists = (old.playlists || []).filter(
@@ -691,85 +752,85 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
    const rmP = removedPlaylists.length ? `${removedPlaylists.length} playlist${removedPlaylists.length !== 1 ? 's' : ''}` : '0 playlists';
 
     if (DRY_RUN) {
-      console.log(`🧪 [DRY RUN] ${newHistory.length && newSubs.length && newPlaylists.length ? '' : 'Would add'} ${newH}, ${newS}, ${newP}.`);
-      console.log(`🧪 [DRY RUN] Would remove ${rmH}, ${rmS}, ${rmP}.`);
+      log(`🧪 [DRY RUN] ${newHistory.length && newSubs.length && newPlaylists.length ? '' : 'Would add'} ${newH}, ${newS}, ${newP}.`);
+      log(`🧪 [DRY RUN] Would remove ${rmH}, ${rmS}, ${rmP}.`);
       const continuePrompt = await prompt('Do you want a full layout of the diffs? (y/n)', 'n');
       if (continuePrompt === 'y') {
-        if (newHistory.length) { 
-          Clog('New videos to sync:', consoleOutput);
-          for (const line of prettyNewHistory) Clog(line, consoleOutput, false, false, 'green');
+        if (newHistory.length) {
+          log('New videos to sync:');
+          for (const line of prettyNewHistory) log(line, { color: 'green' });
         }
         if (newSubs.length) {
-          Clog('New subscriptions to sync:', consoleOutput);
-          for (const line of prettyNewSubs) Clog(line, consoleOutput, false, false, 'green');
+          log('New subscriptions to sync:');
+          for (const line of prettyNewSubs) log(line, { color: 'green' });
         }
         if (newPlaylists.length) {
-          Clog('New playlists to sync:', consoleOutput);
-          for (const line of prettyNewPlaylists) Clog(line, consoleOutput, false, false, 'green');
+          log('New playlists to sync:');
+          for (const line of prettyNewPlaylists) log(line, { color: 'green' });
         }
         if (removedHistory.length) {
-          Clog('Videos to remove from watch history:', consoleOutput);
-          for (const line of prettyRemovedHistory) Clog(line, consoleOutput, false, false, 'red');
+          log('Videos to remove from watch history:');
+          for (const line of prettyRemovedHistory) log(line, { color: 'red' });
         }
         if (removedSubs.length) {
-          Clog('Channels to unsubscribe from:', consoleOutput);
-          for (const line of prettyRemovedSubs) Clog(line, consoleOutput, false, false, 'red');
+          log('Channels to unsubscribe from:');
+          for (const line of prettyRemovedSubs) log(line, { color: 'red' });
         }
         if (removedPlaylists.length) {
-          Clog('Playlists to delete:', consoleOutput);
-          for (const line of prettyRemovedPlaylists) Clog(line, consoleOutput, false, false, 'red');
+          log('Playlists to delete:');
+          for (const line of prettyRemovedPlaylists) log(line, { color: 'red' });
         }
         if (!newHistory.length && !newSubs.length && !newPlaylists.length && !removedHistory.length && !removedSubs.length && !removedPlaylists.length) {
-          Clog('Nothing to remove or add.', consoleOutput);
+          log('Nothing to remove or add.');
         }
       }
       return;
     }
 
     if (HISTORY && SUBS && PLAYLISTS) {
-        Clog('why are you ignoring everything?', consoleOutput);
+        log('why are you ignoring everything?');
         return;
       }
     
     if (VERBOSE) {
       if (!HISTORY) {
-        Clog(`Found ${newHistory.length} new video${useSVideo} to sync`, consoleOutput, false, false, 'green');
+        log(`Found ${newHistory.length} new video${useSVideo} to sync`, { color: 'green' });
       }
       else {
-        Clog('Ignoring history, not calculating new videos to sync', consoleOutput, false, true);
+        log('Ignoring history, not calculating new videos to sync', { err: 'warning' });
       }
       if (!SUBS) {
-        Clog(`Found ${newSubs.length} new subscription${useSSub} to sync`, consoleOutput, false, false, 'green');
+        log(`Found ${newSubs.length} new subscription${useSSub} to sync`, { color: 'green' });
       }
       else {
-        Clog('Ignoring subscriptions, not calculating new subscriptions to sync', consoleOutput, false, true);
+        log('Ignoring subscriptions, not calculating new subscriptions to sync', { err: 'warning' });
       }
       if (!PLAYLISTS) {
-        Clog(`Found ${newPlaylists.length} new playlist${useSPlaylist} to sync`, consoleOutput, false, false, 'green');
+        log(`Found ${newPlaylists.length} new playlist${useSPlaylist} to sync`, { color: 'green' });
       }
       else {
-        Clog('Ignoring playlists, not calculating new playlists to sync', consoleOutput, false, true);
+        log('Ignoring playlists, not calculating new playlists to sync', { err: 'warning' });
       }
       if (removedHistory.length) {
-        Clog(`Found ${removedHistory.length} video${removedHistory.length !== 1 ? 's' : ''} to remove from watch history`, consoleOutput, false, false, 'red');
+        log(`Found ${removedHistory.length} video${removedHistory.length !== 1 ? 's' : ''} to remove from watch history`, { color: 'red' });
       }
       if (removedSubs.length) {
-        Clog(`Found ${removedSubs.length} channel${removedSubs.length !== 1 ? 's' : ''} to unsubscribe from`, consoleOutput, false, false, 'red');
+        log(`Found ${removedSubs.length} channel${removedSubs.length !== 1 ? 's' : ''} to unsubscribe from`, { color: 'red' });
       }
       if (removedPlaylists.length) {
-        Clog(`Found ${removedPlaylists.length} playlist${removedPlaylists.length !== 1 ? 's' : ''} to delete`, consoleOutput, false, false, 'red');
+        log(`Found ${removedPlaylists.length} playlist${removedPlaylists.length !== 1 ? 's' : ''} to delete`, { color: 'red' });
       }
     }
 
     let hadErrors = false;
     const markError = (label, error) => {
       hadErrors = true;
-      Clog(`❌ ${label}: ${error.message || error}`, consoleOutput, true);
+      log(`❌ ${label}: ${error.message || error}`, { err: 'error' });
       certErrorHint(error);
     };
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
-        Clog('ℹ️ No changes to sync, not updating Invidious or export files', consoleOutput, false, true);
+        log('ℹ️ No changes to sync, not updating Invidious or export files',{ err: 'info' });
         return;
       }
       let historyCount = 0;
@@ -777,13 +838,13 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
       for (const videoId of newHistory) {
        try {
         historyCount++;
-        Clog(`Video ${historyCount}/${newHistory.length}`, consoleOutput);
+        log(`Video ${historyCount}/${newHistory.length}`, { err: 'info' });
         const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN);
         const prettyTitle = JSON.stringify(title) || 'Unknown Title';
         const prettyAuthor = JSON.stringify(author) || 'Unknown Author';
        const res = await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
        if (!QUIET) {
-       Clog(`✅ Marked ${prettyTitle} by ${prettyAuthor} as watched (HTTP ${res.code})`, consoleOutput, false, false, 'green');
+       log(`✅ Marked ${prettyTitle} by ${prettyAuthor} as watched (HTTP ${res.code})`, { err: 'info' });
        }
       }
       catch (err) {
@@ -795,7 +856,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
     for (const sub of newSubs) {
       try {
         subCount++;
-        Clog(`Channel ${subCount}/${newSubs.length}`, consoleOutput);
+        log(`Channel ${subCount}/${newSubs.length}`, { err: 'info' });
         const res = await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
         const name = await getChannelName(sub, INSTANCE);
         if (!QUIET) {
@@ -805,9 +866,8 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
         markError(`Failed to subscribe to ${sub}`, err);
       }
     }
-    if (VERBOSE) Clog(`Starting playlist export...`, consoleOutput);
+    if (VERBOSE) log(`Starting playlist export...`, { err: 'info' });
  const playlistsToImport = [];
-// console.log(`found ${pl} and ${pl.title}`)
 const oldPlaylistTitles = new Set(
   (old.playlists || [])
     .filter(pl => pl && typeof pl.title === 'string' && pl.title.trim() !== '')
@@ -817,14 +877,14 @@ let plCount = 0;
 try {
 for (const pl of newPlaylists) {
   if (!pl || typeof pl.title !== 'string') {
-    Clog(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, consoleOutput, false, true);
+    log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { err: 'warning' });
     continue;
   }
   plCount++;
-  Clog(`Playlist ${plCount}/${newPlaylists.length}`, consoleOutput);
-  Clog(`ℹ️ Found new playlist: "${pl.title}"`, consoleOutput);
+  log(`Playlist ${plCount}/${newPlaylists.length}`, { err: 'info' });
+  log(`ℹ️ Found new playlist: "${pl.title}"`, { err: 'info' });
   if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
-    Clog(`ℹ️ Skipping existing playlist: "${pl.title}"`, consoleOutput);
+    log(`ℹ️ Skipping existing playlist: "${pl.title}"`, { err: 'info' });
     continue;
   }
   // Add to playlist import structure
@@ -834,15 +894,15 @@ for (const pl of newPlaylists) {
     privacy: pl.privacy ?? 'Private',
     videos: pl.videos
   });
-  Clog(`🎵 Queued playlist "${pl.title}" for import, \n you will need to import it manually into Invidious. \n Head to Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file.`, consoleOutput, false, false, 'green');
+  log(`🎵 Queued playlist "${pl.title}" for import, \n you will need to import it manually into Invidious. \n Head to Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file.`, { color: 'green' });
 
 }
 if (playlistsToImport.length > 0) {
   const importPath = './playlist-import.json';
   writePlaylistImport(playlistsToImport, importPath);
-  Clog(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`, consoleOutput, false, false, 'green');
+  log(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`, { color: 'green' });
 } else {
-  Clog(`✅ No new playlists to import`, consoleOutput);
+  log(`✅ No new playlists to import`);
 }
 } catch (err) {
   markError('Failed to prepare playlist import', err);
@@ -853,10 +913,10 @@ let removedHisCnt = 0;
      for (const videoId of removedHistory) {
       try {
         removedHisCnt++;
-        Clog(`Removed video ${removedHisCnt}/${removedHistory.length}`, consoleOutput, false, false, 'red');
+        log(`Removed video ${removedHisCnt}/${removedHistory.length}`, { err: 'info' });
       const res = await retryPostRequest(`/auth/history/${videoId}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
-        Clog(`🗑️ Removed ${videoId} from watch history (HTTP ${res.code})`, consoleOutput);
+        log(`🗑️ Removed ${videoId} from watch history (HTTP ${res.code})`, { err: 'info' });
       }
      } catch (err) {
        markError('Failed to remove from watch history', err);
@@ -868,16 +928,16 @@ let removedHisCnt = 0;
     for (const ucid of removedSubs) {
      try {
        removedSubCnt++;
-       Clog(`Unsubscribed from ${ucid} (${removedSubCnt}/${removedSubs.length})`, consoleOutput);
+       log(`Unsubscribed from ${ucid} (${removedSubCnt}/${removedSubs.length})`, { err: 'info' });
       const res = await retryPostRequest(`/auth/subscriptions/${ucid}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
       if (!QUIET) {
-       Clog(`👋 Unsubscribed from ${ucid} (HTTP ${res.code})`, consoleOutput, false, false, 'red');
+       log(`👋 Unsubscribed from ${ucid} (HTTP ${res.code})`, { err: 'info' });
       }
       } catch (err) {
        markError(`Failed to unsubscribe from ${ucid}`, err);
      }
     }
-  if (VERBOSE) Clog(`Processing removed playlists...`, consoleOutput);
+  if (VERBOSE) log(`Processing removed playlists...`, { err: 'info' });
   // Remove deleted playlists from playlist-import.json
   const importPath = './playlist-import.json';
   if (removedPlaylists.length > 0 && existsSync(importPath)) {
@@ -890,7 +950,7 @@ let removedHisCnt = 0;
     );
     
     writeFileSync(importPath, JSON.stringify(importData, null, 2));
-    Clog(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, consoleOutput, false, false, 'red');
+    log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, { err: 'info' });
   } catch (err) {
     markError(`Failed to update ${importPath} after removals`, err);
   }
@@ -898,28 +958,28 @@ let removedHisCnt = 0;
     if (!hadErrors) {
       writeNewExport(output);
       if (!QUIET) {
-        Clog(`✅ Exported to ${stripDir(OUTPUT_FILE)} and updated ${stripDir(OLD_EXPORT_PATH)}`, consoleOutput);
+        log(`✅ Exported to ${stripDir(OUTPUT_FILE)} and updated ${stripDir(OLD_EXPORT_PATH)}`);
       }
       if (QUIET) {
-        Clog(`Sync complete. Exported to ${stripDir(OUTPUT_FILE)} and updated ${stripDir(OLD_EXPORT_PATH)}`, consoleOutput);
+        log(`Sync complete. Exported to ${stripDir(OUTPUT_FILE)} and updated ${stripDir(OLD_EXPORT_PATH)}`);
       }
     } else {
-      Clog('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', consoleOutput, false, true);
+      log('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', { err: 'warning' });
     }
   } else {
      if (!hadErrors) {
       noSyncWrite(output, OUTPUT_FILE, QUIET);
       }
     else {
-      Clog('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', consoleOutput, false, true);
+      log('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', { err: 'warning' });
     }
   }
 
 }
 // Kick off
 await main().catch(err => {
-  Clog(`❌ Fatal error: ${err}`, consoleOutput, true);
+  log(`❌ Fatal error: ${err}`, { err: 'error' });
   process.exit(1);
 });
 await maybeSchedule();
-logConsoleOutput(resolve(LOGS), consoleOutput);
+logConsoleOutput();

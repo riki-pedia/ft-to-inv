@@ -37,27 +37,52 @@ function resolveEnvVars(names) {
  *         - args: array of CLI arguments (e.g., process.argv.slice(2)) or just args
  *         - fallback: value to return if not found in any source, default undefined
  *         - isFlag: boolean indicating if the option is a flag (true) or a value (false), default false
- * 
+ *         - positionalArg: string indicating a positional argument name (e.g., "instance"), default null
+ *
  */
-export async function resolveConfig(key, { cliNames = [], envNames = [], config = {}, args = [], fallback = undefined, isFlag = false }) {
+export async function resolveConfig(
+  key,
+  {
+    cliNames = [],
+    envNames = [],
+    config = {},
+    args = [],
+    fallback = undefined,
+    isFlag = false,
+    positionalArg = null
+  }
+) {
   if (isFlag) {
-    // CLI flags
+    // 1. CLI flags
     if (cliNames.some(flag => args.includes(flag))) return true;
-    // Env flags
+    // 2. Positional flag, like `ft-to-inv verbose`
+    if (positionalArg !== null && args.includes(positionalArg)) {
+      return true;
+    }
+    // 3. Env flags
     const envVal = resolveEnvVars(envNames);
     if (envVal !== undefined) return envVal === 'true';
-    // Config flags
+    // 4. Config flags
     if (config.hasOwnProperty(key)) return config[key] === true;
     return false;
   } else {
-    // CLI values
+    // 1. CLI values (--foo, -f, --foo=value)
     const cliVal = getArg(args, cliNames);
     if (cliVal !== undefined) return cliVal;
-    // Env values
+    // 2. Named positional arg, like `ft-to-inv instance https://foo`
+    if (positionalArg) {
+      const idx = args.indexOf(positionalArg);
+      if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith('-')) {
+        return args[idx + 1];
+      }
+    }
+    // 3. Env values
     const envVal = resolveEnvVars(envNames);
     if (envVal !== undefined) return envVal;
-    // Config values
+    // 4. Config values
     if (config.hasOwnProperty(key)) return config[key];
+    // 5. Fallback
     return fallback;
   }
 }
+

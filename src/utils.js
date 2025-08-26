@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, copyFileSync } from 'fs';
 import { join } from 'path';
 import https from 'https';
 import http from 'http';
+import { log, logConsoleOutput } from './logs.js'
 let config = {}
 // Load a newline-delimited JSON file into an array of objects
 export async function loadNDJSON(filePath) {
@@ -14,7 +15,7 @@ export async function loadNDJSON(filePath) {
       try {
         results.push(JSON.parse(line));
       } catch (err) {
-        console.warn(`❌ Could not parse line in ${filePath}: ${line}`);
+        log(`❌ Could not parse line in ${filePath}: ${line}`, { err: 'warning' });
       }
     }
   }
@@ -60,7 +61,7 @@ export function writeNewExport(data) {
 export function noSyncWrite(outputObj, outputPath, quiet) {
   const json = JSON.stringify(outputObj, null, 2);
   writeFileSync(outputPath, json);
-  if (!quiet) console.log(`✅ Wrote export to ${outputPath} (no-sync mode)`);
+  if (!quiet) log(`✅ Wrote export to ${outputPath} (no-sync mode)`);
 }
 let INSECURE = config.insecure || false;
 let INSTANCE = config.instance;
@@ -77,7 +78,7 @@ export async function retryPostRequest(path, json, token, instance, insecure, me
       lastError = err;
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
-        console.warn(`⚠️ Attempt ${attempt} failed (${err.message}), retrying in ${delay / 1000}s...`);
+        log(`⚠️ Attempt ${attempt} failed (${err.message}), retrying in ${delay / 1000}s...`, { err: 'warning' });
         await sleep(delay);
       }
     }
@@ -114,8 +115,8 @@ export function postToInvidious(path, json = {}, token, instance, insecure = fal
       res.on('end', () => {
         const bodyLowercase = body.toLowerCase();
         if (res.statusCode === 403 && bodyLowercase.includes('request must be authenticated')) {
-          console.log(`⚠️ Invidious API request failed: bad token or API disabled. 
-If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${instance}/data_control`);
+          log(`⚠️ Invidious API request failed: bad token or API disabled. 
+If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${instance}/data_control`, { err: 'warning' });
           return reject(new Error(`Authentication error (403): ${body}`));
         }
         if (res.statusCode >= 400 || (bodyLowercase.includes('error') && res.statusCode !== 404)) {
@@ -204,3 +205,4 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
     return { author: 'Unknown', title: vid };
   }
 }
+logConsoleOutput();
