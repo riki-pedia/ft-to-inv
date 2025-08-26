@@ -860,7 +860,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
         const res = await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
         const name = await getChannelName(sub, INSTANCE);
         if (!QUIET) {
-          Clog(`📺 Subscribed to ${name} (${sub}) with HTTP ${res.code}`, consoleOutput, false, false, 'green');
+          log(`📺 Subscribed to ${name} (${sub}) with HTTP ${res.code}`, { color: 'green' });
         }
         } catch (err) {
         markError(`Failed to subscribe to ${sub}`, err);
