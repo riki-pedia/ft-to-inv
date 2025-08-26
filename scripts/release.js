@@ -77,7 +77,7 @@ async function main() {
 
   // --- Step 4: GitHub release ---
   // note: files are read from the dir the command is run from, not where the script is
-  run(`gh release create v${version} --title "Release v${version}" -F ${releaseName}`);
+  run(`gh release create v${version} --title "v${version}" -F ${releaseName}`);
 
   console.log(`✅ Release v${version} created successfully!`);
 
