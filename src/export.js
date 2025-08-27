@@ -360,7 +360,8 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     envNames: ['FT_TO_INV_CONFIG_EXPORT_DIR', 'EXPORT_DIR', 'FT_TO_INV_EXPORT_DIR'],
     config: config,
     args: args,
-    fallback: resolve('.')
+    fallback: resolve('.'),
+    positionalArgs: ['export-dir', 'export']
   }
   )
   FREETUBE_DIR = await resolveConfig('freetube_dir', {
@@ -368,35 +369,38 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
       envNames: ['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'],
       config: config,
       args: args,
-      fallback: getDefaultFreeTubeDir()
-      }
-     )
+      fallback: getDefaultFreeTubeDir(),
+      positionalArgs: ['freetube-dir', 'freetube']
+    }
+  )
   // these files are always those names, not taking args for them
   // if theyre different make a symlink ig
   PROFILE_PATH = join(FREETUBE_DIR, 'profiles.db');
   HISTORY_PATH = join(FREETUBE_DIR, 'history.db');
   PLAYLIST_PATH = join(FREETUBE_DIR, 'playlists.db');
   // this looks trash, if you can make this better please do
-  // also if you find a comment that i forgot to delete, specifically ones that say the flags while i transfer, pls open a pr to fix
   TOKEN = await resolveConfig('token', {
     cliNames: ['--token', '-t'],
     envNames: ['FT_TO_INV_CONFIG_TOKEN', 'FT_TO_INV_TOKEN', 'TOKEN'],
     config: config,
     args: args,
+    positionalArgs: ['token', 't', 'auth']
   });
   INSTANCE = await resolveConfig('instance', {
     cliNames: ['--instance', '-i'],
     envNames: ['FT_TO_INV_CONFIG_INSTANCE', 'INSTANCE', 'FT_TO_INV_INSTANCE'],
     config: config,
     args: args,
-    fallback: 'https://invidious.example.com'
-  })
+    fallback: 'https://invidious.example.com',
+    positionalArgs: ['instance', 'i']
+  });
   VERBOSE = await resolveConfig('verbose', {
     cliNames: ['--verbose', '-v'],
     envNames: ['FT_TO_INV_CONFIG_VERBOSE', 'VERBOSE', 'FT_TO_INV_VERBOSE'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['verbose']
   }
 )
   DRY_RUN = await resolveConfig('dry_run', {
@@ -404,16 +408,17 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     envNames: ['FT_TO_INV_CONFIG_DRY_RUN', 'DRY_RUN', 'FT_TO_INV_DRY_RUN'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['dry-run', 'dryRun', 'dry']
   }
 )
-  // --quiet, -q, config.quiet, FT_TO_INV_CONFIG_QUIET, QUIET, FT_TO_INV_QUIET
   QUIET = await resolveConfig('quiet', {
     cliNames: ['--quiet', '-q'],
     envNames: ['FT_TO_INV_CONFIG_QUIET', 'QUIET', 'FT_TO_INV_QUIET'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['quiet']
   }
 )
   INSECURE = await resolveConfig('insecure', {
@@ -421,22 +426,24 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     envNames: ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['insecure', 'http']
   })
   NOSYNC = await resolveConfig('no_sync', {
     cliNames: ['--no-sync'],
     envNames: ['FT_TO_INV_CONFIG_NO_SYNC', 'NOSYNC', 'FT_TO_INV_NOSYNC'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['no-sync', 'noSync', 'nosync']
   })
-  // --dont-shorten-paths, config.dont_shorten_paths, FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS, DONT_SHORTEN_PATHS, FT_TO_INV_DONT_SHORTEN_PATHS
   DONT_SHORTEN_PATHS = await resolveConfig('dont_shorten_paths', {
     cliNames: ['--dont-shorten-paths'],
     envNames: ['FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS', 'DONT_SHORTEN_PATHS', 'FT_TO_INV_DONT_SHORTEN_PATHS'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['dont-shorten-paths', 'dontShortenPaths', 'dontShorten']
   })
 
   PLAYLISTS  = await resolveConfig('playlists', {
@@ -444,21 +451,24 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     envNames: ['FT_TO_INV_CONFIG_PLAYLISTS', 'PLAYLISTS', 'FT_TO_INV_PLAYLISTS'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['playlists']
   })
   HISTORY = await resolveConfig('history', {
     cliNames: ['--history', '--dont-include-history', '-hi'],
     envNames: ['FT_TO_INV_CONFIG_HISTORY', 'HISTORY', 'FT_TO_INV_HISTORY'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['history']
   })
   SUBS = await resolveConfig('subscriptions', {
     cliNames: ['--subscriptions', '--dont-include-subs', '-s'],
     envNames: ['FT_TO_INV_CONFIG_SUBS', 'SUBS', 'FT_TO_INV_SUBS'],
     config: config,
     args: args,
-    isFlag: true
+    isFlag: true,
+    positionalArgs: ['subscriptions', 'subs']
   })
 
   OUTPUT_FILE        = exportPath || join(EXPORT_DIR, 'invidious-import.json');
@@ -468,15 +478,17 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     envNames: ['FT_TO_INV_CONFIG_CRON_SCHEDULE', 'CRON_SCHEDULE', 'FT_TO_INV_CRON_SCHEDULE', 'CRON'],
     config: config,
     args: args,
-    fallback: ''
-  }) || '';
+    fallback: '',
+    positionalArgs: ['cron-schedule', 'cron']
+  }) 
 
   LOGS_BOOLEAN       = await resolveConfig('logs', {
      cliNames: ['--logs', '-l'],
      envNames: ['FT_TO_INV_CONFIG_LOGS', 'LOGS', 'FT_TO_INV_LOGS'],
      config: config,
      args: args,
-     isFlag: true
+     isFlag: true,
+     positionalArgs: ['logs']
   })
   LOGS               = LOGS_BOOLEAN ? resolve('ft-to-inv-' + Date.now() + '.log') : undefined;
   // intended for cases like `ft-to-inv help instance`
@@ -484,23 +496,9 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
      config: config,
      args: args,
      isFlag: false,
-     positionalArg: 'help',
+     positionalArgs: ['help'],
      fallback: undefined
   });
-   sanitize({
-    token: TOKEN,
-    instance: INSTANCE,
-    export_dir: EXPORT_DIR,
-    freetube_dir: FREETUBE_DIR,
-    cron: CRON_SCHEDULE
-   },
-   {
-    token: true,
-    instance: true,
-    export_dir: true,
-    freetube_dir: true,
-    cron: true
-   })
   // leaving this one, exits early
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {
@@ -561,24 +559,228 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     const h = HELPCMD.toLowerCase();
     if (h === 'instance') {
       console.log(
-      `Instance:
-        Your Invidious instance URL. Expects a valid url, like http://localhost:3000
-       Usage:
-        ft-to-inv instance
-       Aliases:
-        --instance, -i
-        FT_TO_INV_CONFIG_INSTANCE, INSTANCE, FT_TO_INV_INSTANCE
-        ft-to-inv instance
-       Expects a valid webserver URL, anything resolvable by the host
-       Can be in either http or https
-       You can specify a port like this:
-       ft-to-inv instance http://localhost:3000`);
-    } else if (h === 'token') {
-      log(`🔑 Token: ${TOKEN}`);
+      `
+Instance:
+ Your Invidious instance URL. Expects a valid url, like http://localhost:3000
+Usage:
+ ft-to-inv instance
+Aliases:
+  --instance, -i
+  FT_TO_INV_CONFIG_INSTANCE, INSTANCE, FT_TO_INV_INSTANCE
+  ft-to-inv instance
+  Expects a valid webserver URL, anything resolvable by the host
+  Can be in either http or https
+  You can specify a port like this:
+  ft-to-inv instance http://localhost:3000
+       `);
+    } else if (h === 'token' || h === 't' || h === 'auth' ) {
+      log(`
+Token:
+ Your Invidious SID cookie for authentication.
+Usage:
+ ft-to-inv token foo
+Aliases:
+ --token, -t
+ FT_TO_INV_CONFIG_TOKEN, TOKEN, FT_TO_INV_TOKEN
+ You can usually get a token by going to your instance > Settings/Preferences > Manage Tokens and pasting the top one in
+ Warning: Be careful with these, they give full read/write access to your Invidious account
+ Expects 40ish characters and a token ending with = (like current versions should)
+ If you host an older instance before newer tokens you can rollback to version 0.2.9 of ft-to-inv. `);
     } 
-  }
-  
-  
+    else if (h === 'freetube-dir' || h === 'freetube' ) {
+      log(`
+FreeTube Directory:
+ The path to your FreeTube data directory. Expects a valid directory path.
+Usage:
+ ft-to-inv freetube-dir /path/to/freetube
+Aliases:
+ --freetube-dir, -f, -cd
+ FT_TO_INV_CONFIG_FREETUBE_DIR, FREETUBE_DIR, FT_TO_INV_FREETUBE_DIR
+
+On Linux, this is usually located at:
+~/.config/FreeTube
+
+On Windows, this is usually located at:
+C:\\Users\\<YourUsername>\\AppData\\Roaming\\FreeTube
+
+On macOS, this is usually located at:
+~/Library/Application Support/FreeTube
+(note: i dont actually have a mac)
+
+Checks for FreeTube's file structure:
+ history.db - history, duh
+ playlists.db - playlists
+ profiles.db - profiles, holds your current user config with subs
+ `);
+    }
+    else if (h === 'export-dir' || h === 'export') {
+      log(`
+Export Directory:
+ The directory to write the export file to. Expects a valid directory path.
+Usage:
+ ft-to-inv export-dir /path/to/export
+Aliases:
+ --export-dir, -e
+ FT_TO_INV_CONFIG_EXPORT_DIR, EXPORT_DIR, FT_TO_INV_EXPORT_DIR
+ Defaults to the current working directory.
+ The Invidius export files (invidious-import.json, import.old.json, and playlist-import.json) will be here
+ `);
+    }
+    else if (h === 'verbose') {
+      log(`
+Verbose:
+ Enable verbose logging.
+Usage:
+ ft-to-inv verbose
+Aliases:
+ --verbose, -v
+ FT_TO_INV_CONFIG_VERBOSE, VERBOSE, FT_TO_INV_VERBOSE
+ This is really simple, just makes the tool output more information about what it's doing.
+ `);
+    }
+    else if (h === 'dry-run') {
+      log(`
+Dry Run:
+ Run the tool without making any changes.
+Usage:
+ ft-to-inv dry-run
+Aliases:
+ --dry-run, -d
+ FT_TO_INV_CONFIG_DRY_RUN, DRY_RUN, FT_TO_INV_DRY_RUN
+ Runs the tool and checks what *would* happen without making any changes. You can also have it display a "neat" table of the changes it would make.
+ `);
+    }
+    else if (h === 'quiet') {
+      log(`
+Quiet:
+ Suppress all output except for errors.
+Usage:
+ ft-to-inv quiet
+Aliases:
+ --quiet, -q
+ FT_TO_INV_CONFIG_QUIET, QUIET, FT_TO_INV_QUIET
+ Opposite of --verbose. Silences most output except for errors and warnings.
+ `);
+    }
+    else if (h === 'insecure' || h === 'http') {
+      log(`
+Insecure:
+ Allow insecure connections (HTTP).
+Usage:
+ ft-to-inv insecure
+Aliases:
+ --insecure, --http
+ FT_TO_INV_CONFIG_INSECURE, INSECURE, FT_TO_INV_INSECURE
+ ft-to-inv http
+ Requires http instead of https. Most of the time this is automatically set, but it's still best practice to set it anyway.
+ `);
+      }
+      else if (h === 'noSync' || h === 'no-sync' || h === 'nosync') {
+        log(`
+No Sync:
+ Disable syncing with the Invidious API.
+Usage:
+ ft-to-inv no-sync
+Aliases:
+ --noSync, -n
+ FT_TO_INV_CONFIG_NO_SYNC, NO_SYNC, FT_TO_INV_NO_SYNC
+ Exports your data without syncing with the Invidious API. Useful when you can't use the API or don't trust me enough to give the tool your token.
+ (you should btw)
+ `);
+      }
+      else if (h === 'dont-shorten-paths' || h === 'dontShortenPaths' || h === 'dontShorten') {
+        log(`
+Don't Shorten Paths:
+ Don't shorten file paths in the output.
+Usage:
+ ft-to-inv dont-shorten-paths
+Aliases:
+ --dont-shorten-paths
+ FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS, DONT_SHORTEN_PATHS, FT_TO_INV_DONT_SHORTEN_PATHS
+ By default, file paths are shortened in the terminal output. It would look like this:
+   <ExportDir>/invidious-import.json
+ Instead, it will show the full path:
+   /home/you/ft-to-inv/export/invidious-import.json
+ `);
+      }
+      else if (h === 'playlists' || h === 'playlist') {
+        log(`
+Playlists:
+ Skip exporting playlists.
+Usage:
+ ft-to-inv playlists
+Aliases:
+ --playlists, -p, --dont-include-playlists
+ FT_TO_INV_CONFIG_PLAYLISTS, PLAYLISTS, FT_TO_INV_PLAYLISTS
+ Used for cases where you want to skip exporting playlists.
+ `);
+      }
+      else if (h === 'history') {
+        log(`
+History:
+ Skip exporting history.
+Usage:
+ ft-to-inv history
+Aliases:
+ --history, -h, --dont-include-history
+ FT_TO_INV_CONFIG_HISTORY, HISTORY, FT_TO_INV_HISTORY
+ Used for cases where you want to skip exporting history.
+ `);
+      }
+      else if (h === 'subscriptions' || h === 'subs') {
+        log(`
+Subscriptions:
+ Skip exporting subscriptions.
+Usage:
+ ft-to-inv subscriptions
+Aliases:
+ --subscriptions, -s, --dont-include-subs
+ FT_TO_INV_CONFIG_SUBS, SUBS, FT_TO_INV_SUBS
+ Used for cases where you want to skip exporting subscriptions.
+ `);
+      }
+      else if (h === 'cron' || h === 'cron-schedule') {
+        log(`
+Cron Schedule:
+ Set a cron schedule for the export.
+Usage:
+ ft-to-inv cron
+Aliases:
+ --cron, -cron --cron-schedule
+ FT_TO_INV_CONFIG_CRON, CRON, FT_TO_INV_CRON
+ Takes a valid cron string, checks it, and sets the tool to run on a schedule based off it. For help with cron strings, see https://crontab.guru/.
+ `);
+      } 
+      else if (h === 'logs') {
+        log(`
+Logs:
+ Enable logging for the export process.
+Usage:
+ ft-to-inv logs
+Aliases:
+ --logs, -l
+ FT_TO_INV_CONFIG_LOGS, LOGS, FT_TO_INV_LOGS
+ This is useful for debugging and monitoring the export process. This only sets logging, you can't change the name of the file. If you want a custom file, run something like this:
+ ft-to-inv | tee custom-log-file.txt
+ `);
+      }
+      return;
+    }
+
+  sanitize({
+    token: TOKEN,
+    instance: INSTANCE,
+    export_dir: EXPORT_DIR,
+    freetube_dir: FREETUBE_DIR,
+    cron: CRON_SCHEDULE
+   },
+   {
+    token: true,
+    instance: true,
+    export_dir: true,
+    freetube_dir: true,
+    cron: true
+   })
   await isExpectedArg(args);
   if (QUIET && VERBOSE) {
     log('❌ Conflicting options: --quiet and --verbose', { err: 'error' });
@@ -594,12 +796,12 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     }
   }
   if (!TOKEN && !DRY_RUN && !NOSYNC) {
-    log('❌ No token specified.', { err: 'error' });
+    log('❌ No token specified.\n See ft-to-inv help token for more info.', { err: 'error' });
     process.exit(1);
   }
   if (VERBOSE) {
     log(`🌐 Instance: ${INSTANCE}`, { err: 'info' });
-    log('📂 Paths:', { err: 'info' });
+    log(` Paths:`, { err: 'info' });
     log(`   FreeTube data directory: ${FREETUBE_DIR}`, { err: 'info' });
     log(`   Export directory: ${EXPORT_DIR}`, { err: 'info' });
     log(`   History: ${stripDir(HISTORY_PATH)}`, { err: 'info' });

@@ -303,7 +303,6 @@ export async function runFirstTimeSetup() {
 
 export function loadConfig(conf) {
   const config = conf
-  console.log('Loading config from:', config || 'ft-to-inv.jsonc (default)');
   const fileConfig = existsSync(config) ? loadJsonc(config) : {};
   const merged = { ...fileConfig };
 
