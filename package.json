@@ -34,7 +34,7 @@
   "dependencies": {
     "chalk": "^4.1.2",
     "comment-json": "^4.2.5",
-    "ft-to-inv": "^0.2.4",
+    "ft-to-inv": "^0.3.3",
     "node-cron": "^4.2.1",
     "strip-json-comments": "^5.0.3"
   }
