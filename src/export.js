@@ -321,7 +321,7 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
 }
 
 // Main function to run the export and sync process
-async function main() {
+export async function main(overrides = {}) {
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
@@ -499,6 +499,23 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
      positionalArgs: ['help'],
      fallback: undefined
   });
+
+  INSTANCE = overrides.instance || INSTANCE;
+  TOKEN = overrides.token || TOKEN;
+  FREETUBE_DIR = overrides.freetube_dir || FREETUBE_DIR;
+  EXPORT_DIR = overrides.export_dir || EXPORT_DIR;
+  VERBOSE = overrides.verbose || VERBOSE;
+  DRY_RUN = overrides.dry_run || DRY_RUN;
+  DONT_SHORTEN_PATHS = overrides.dont_shorten_paths || DONT_SHORTEN_PATHS;
+  NOSYNC = overrides.noSync || NOSYNC;
+  QUIET = overrides.quiet || QUIET;
+  INSECURE = overrides.insecure || INSECURE;
+  CRON_SCHEDULE = overrides.cron_schedule || CRON_SCHEDULE;
+  LOGS_BOOLEAN = overrides.logs || LOGS_BOOLEAN;
+  HISTORY = overrides.history || HISTORY;
+  HELPCMD = overrides.helpcmd || HELPCMD;
+  SUBS = overrides.subscriptions || SUBS;
+  PLAYLISTS = overrides.playlists || PLAYLISTS;
   // leaving this one, exits early
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   if (HELP === true) {
@@ -760,13 +777,13 @@ Usage:
 Aliases:
  --logs, -l
  FT_TO_INV_CONFIG_LOGS, LOGS, FT_TO_INV_LOGS
- This is useful for debugging and monitoring the export process. This only sets logging, you can't change the name of the file. If you want a custom file, run something like this:
+ This is useful for debugging and monitoring the export process. This only sets logging, you can't change the name of the file. If you REALLY want a custom file, run something like this:
  ft-to-inv | tee custom-log-file.txt
  `);
       }
       return;
     }
-
+ if (!overrides || Object.keys(overrides).length === 0) {
   sanitize({
     token: TOKEN,
     instance: INSTANCE,
@@ -780,8 +797,14 @@ Aliases:
     export_dir: true,
     freetube_dir: true,
     cron: true
-   })
-  await isExpectedArg(args);
+   })} else {
+    log(`Bypassing sanitization due to passing in overrides to main.`, { err: 'warning' });
+   }
+   if (!overrides || Object.keys(overrides).length === 0) {
+     await isExpectedArg(args);
+   } else {
+    log(`Bypassing argument checks due to passing in overrides to main.`, { err: 'warning' });
+   }
   if (QUIET && VERBOSE) {
     log('❌ Conflicting options: --quiet and --verbose', { err: 'error' });
     process.exit(1);
@@ -1046,7 +1069,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
         const prettyAuthor = JSON.stringify(author) || 'Unknown Author';
        const res = await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
        if (!QUIET) {
-       log(`✅ Marked ${prettyTitle} by ${prettyAuthor} as watched (HTTP ${res.code})`, { err: 'info' });
+       log(`✅ Marked ${prettyTitle} by ${prettyAuthor} as watched (HTTP ${res.code})`, { err: 'info', color: 'green' });
        }
       }
       catch (err) {
@@ -1179,9 +1202,10 @@ let removedHisCnt = 0;
 
 }
 // Kick off
+if (import.meta.url === `file://${process.argv[1]}`) {
 await main().catch(err => {
   log(`❌ Fatal error: ${err}`, { err: 'error' });
   process.exit(1);
-});
+})};
 await maybeSchedule();
 logConsoleOutput();
