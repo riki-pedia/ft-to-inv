@@ -52,7 +52,7 @@
     "50": "You can set the environment variable FT_TO_INV_HISTORY to specify whether or not to export history.",
     "51": "You can set the environment variable FT_TO_INV_PLAYLISTS to specify whether or not to export playlists.",
     "52": "You can set the environment variable FT_TO_INV_SUBSCRIPTIONS to specify whether or not to export subscriptions.",
-    "53": "Currently, there are about 1000 downloads on npm. You should get that number higher!",
+    "53": "Currently, there are about 2000 downloads on npm. You should get that number higher!",
     "54": "you should try out my other projects too, check out my GitHub at https://github.com/riki-pedia",
     "55": "I challenge you to write a better README and open a PR.",
     "56": "I'm working on accepting positional args right now, so it would look something like this: ft-to-inv arg rather than ft-to-inv --arg",
@@ -73,6 +73,7 @@
     "71": "This was originally a single file, but it's grown quite a bit!",
     "72": "At first, this was just a tool for me to keep my FreeTube and Invidious data in sync, but I thought it could be useful for others as well, so I published to npm.",
     "73": "This is one large file.",
-    "74": "There's currently about 6 helper scripts for this tool, I expect that number to grow.",
-    "75": "There's also a lot of room for improvement in the code quality and organization."
+    "74": "There's currently about 7 helper scripts for this tool, I expect that number to grow.",
+    "75": "There's also a lot of room for improvement in the code quality and organization.",
+    "76": "h"
 }

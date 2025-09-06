@@ -8,6 +8,7 @@ export const pluginMeta = [];
 import {log} from './logs.js';
 
 export async function loadPlugins() {
+  console.log("🔌 Loading plugins...");
   const pluginsDir = path.resolve("./plugins");
   if (!fs.existsSync(pluginsDir)) {
     log('no plugins found', {err: 'info'})
@@ -36,5 +37,3 @@ export async function runHook(hookName, context = {}) {
     }
   }
 }
-await loadPlugins();
-await runHook("beforeMain", { overrides: {} });

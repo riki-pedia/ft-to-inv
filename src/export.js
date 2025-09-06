@@ -288,8 +288,8 @@ function startHints() {
     const delay = getRandomInt(10_000, 60_000); // 10s–1m
     setTimeout(() => {
       // note: cant be hints.length + 1 because that returns NaN. ill have to update this manually as i add more hints :/
-      const hintNumber = getRandomInt(1, 76);
-      log(`💡 ${hints[hintNumber === 76 ? 75 : hintNumber]}`);
+      const hintNumber = getRandomInt(1, 77);
+      log(`💡 ${hints[hintNumber === 77 ? 76 : hintNumber]}`);
       scheduleNextHint(); // queue another
     }, delay);
   }
@@ -328,8 +328,8 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
 //#region main
 // Main function to run the export and sync process
 export async function main(overrides = {}) {
-  await runHook('beforeMain', { overrides });
   await loadPlugins();
+  await runHook('beforeMain', { overrides });
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
@@ -956,7 +956,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
    const prettyRemovedHistory = [];
    const prettyRemovedSubs = [];
    const prettyRemovedPlaylists = [];
-   await runHook('duringSync', {config, data: output})
+   await runHook('duringSync', {data: output})
   if (DRY_RUN) {
    for (const id of newHistory) {
       const video = await getVideoNameAndAuthor(id, INSTANCE, TOKEN);
@@ -1215,15 +1215,15 @@ let removedHisCnt = 0;
       log('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', { err: 'warning' });
     }
   }
-await runHook('afterSync', { config, data });
+await runHook('afterSync', { data: output });
 }
 //#endregion
 // Kick off
-if (import.meta.url === `file://${process.argv[1]}`) {
-await main().catch(async err => {
+//if (import.meta.url === `file://${process.argv[1]}`) {
+await main().catch( err => {
   log(`❌ Fatal error: ${err}`, { err: 'error' });
-  await runHook('onError', { error: err });
+  runHook('onError', { error: err });
   process.exit(1);
-})};
+})//};
 await maybeSchedule();
 logConsoleOutput();

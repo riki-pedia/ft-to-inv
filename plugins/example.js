@@ -57,14 +57,11 @@ export async function beforeSync({ config, data }) {
   console.log("🔧 [example-plugin] beforeSync called");
   // config is an object containing the resolved config for ft-to-inv
   // data is an object containing the sync/export data
-  const test = config.test || {};
-  const exampleData = data.exampleData || [];
-  console.log("🔧 [example-plugin] beforeSync called", { test, exampleData });
 }
-export async function duringSync({ config, data }) {
-  console.log("🔧 [example-plugin] duringSync called", { config, data });
+export async function duringSync({ data }) {
+  console.log("🔧 [example-plugin] duringSync called", { data });
 }
-export async function afterSync({ config, data }) {
+export async function afterSync({ data }) {
   // the sync process is full of early exits, i would reccomend using duringSync instead
   // gets called at the very end if there are no early exits
   console.log("✅ [example-plugin] afterSync finished");
