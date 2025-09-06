@@ -7,7 +7,11 @@
 // cli args > env > config
 // you can preface env with FT_INV_CONFIG_OPTION, where option is the cli flag you want to pass
 // for example: set FT_TO_INV_CONFIG_INSTANCE=https://invidous.example.com sets the instance flag to be https://invidious.example.com
+// when theres a huge file, sort it a little
+// add some regions
+// please.
 // THIS FILES 975 LINES WHAT HAVE I DONE
+//#region imports and functions
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
 import {
@@ -38,6 +42,7 @@ import cron from 'node-cron';
 import { clearFiles } from './clear-import-files.js';
 import hints from './hints.json' with { type: 'json' } 
 import { sanitize } from './sanitize.js';
+import { loadPlugins, runHook } from './loader.js';
 
 const args = process.argv.slice(2);
 // cron is the only arg that should reasonably have spaces, so we handle it specially
@@ -319,9 +324,12 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
   });
 }
 }
-
+//#endregion
+//#region main
 // Main function to run the export and sync process
 export async function main(overrides = {}) {
+  await runHook('beforeMain', { overrides });
+  await loadPlugins();
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
@@ -421,6 +429,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     positionalArgs: ['quiet']
   }
 )
+runHook('duringMain', {overrides})
   INSECURE = await resolveConfig('insecure', {
     cliNames: ['--insecure', '--http'],
     envNames: ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'],
@@ -516,8 +525,11 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   HELPCMD = overrides.helpcmd || HELPCMD;
   SUBS = overrides.subscriptions || SUBS;
   PLAYLISTS = overrides.playlists || PLAYLISTS;
+  await runHook('afterMain', { overrides, config });
   // leaving this one, exits early
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
+  //#endregion
+  //#region help
   if (HELP === true) {
    console.log(
     `FreeTube to Invidious Exporter
@@ -571,7 +583,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   )
   process.exit(0);
   }
-  
+  // |-/
   if (HELPCMD) {
     const h = HELPCMD.toLowerCase();
     if (h === 'instance') {
@@ -783,6 +795,7 @@ Aliases:
       }
       return;
     }
+    //#endregion
  if (!overrides || Object.keys(overrides).length === 0) {
   sanitize({
     token: TOKEN,
@@ -833,7 +846,7 @@ Aliases:
     log(`   Export → ${stripDir(OUTPUT_FILE)}`, { err: 'info' });
     log(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`, { err: 'info' });
   }
-
+   await runHook('beforeSync', { overrides });
   // Now call sync
   await sync();
 }
@@ -847,7 +860,8 @@ function certErrorHint(err) {
       else return;
     }
 // === sync logic ===
-async function sync() {
+//#region sync
+export async function sync() {
     
     let historyData = await loadNDJSON(HISTORY_PATH);
     if (HISTORY === true) {
@@ -942,6 +956,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
    const prettyRemovedHistory = [];
    const prettyRemovedSubs = [];
    const prettyRemovedPlaylists = [];
+   await runHook('duringSync', {config, data: output})
   if (DRY_RUN) {
    for (const id of newHistory) {
       const video = await getVideoNameAndAuthor(id, INSTANCE, TOKEN);
@@ -1048,10 +1063,11 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
     }
 
     let hadErrors = false;
-    const markError = (label, error) => {
+    const markError = async (label, error) => {
       hadErrors = true;
       log(`❌ ${label}: ${error.message || error}`, { err: 'error' });
       certErrorHint(error);
+      await runHook('onError', { error });
     };
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
@@ -1073,7 +1089,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
        }
       }
       catch (err) {
-        markError('Failed to sync watch history', err);
+        await markError('Failed to sync watch history', err);
       }
     }
   }
@@ -1088,7 +1104,7 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
           log(`📺 Subscribed to ${name} (${sub}) with HTTP ${res.code}`, { color: 'green' });
         }
         } catch (err) {
-        markError(`Failed to subscribe to ${sub}`, err);
+          await markError(`Failed to subscribe to ${sub}`, err);
       }
     }
     if (VERBOSE) log(`Starting playlist export...`, { err: 'info' });
@@ -1130,8 +1146,8 @@ if (playlistsToImport.length > 0) {
   log(`✅ No new playlists to import`);
 }
 } catch (err) {
-  markError('Failed to prepare playlist import', err);
-}   
+  await markError('Failed to prepare playlist import', err);
+}
 let removedHisCnt = 0;
 // Remove watched videos
     if (removedHistory.length) {
@@ -1144,7 +1160,7 @@ let removedHisCnt = 0;
         log(`🗑️ Removed ${videoId} from watch history (HTTP ${res.code})`, { err: 'info' });
       }
      } catch (err) {
-       markError('Failed to remove from watch history', err);
+      await markError('Failed to remove from watch history', err);
       }
     }
   }
@@ -1159,7 +1175,7 @@ let removedHisCnt = 0;
        log(`👋 Unsubscribed from ${ucid} (HTTP ${res.code})`, { err: 'info' });
       }
       } catch (err) {
-       markError(`Failed to unsubscribe from ${ucid}`, err);
+        await markError(`Failed to unsubscribe from ${ucid}`, err);
      }
     }
   if (VERBOSE) log(`Processing removed playlists...`, { err: 'info' });
@@ -1177,7 +1193,7 @@ let removedHisCnt = 0;
     writeFileSync(importPath, JSON.stringify(importData, null, 2));
     log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, { err: 'info' });
   } catch (err) {
-    markError(`Failed to update ${importPath} after removals`, err);
+    await markError(`Failed to update ${importPath} after removals`, err);
   }
 }
     if (!hadErrors) {
@@ -1199,12 +1215,14 @@ let removedHisCnt = 0;
       log('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', { err: 'warning' });
     }
   }
-
+await runHook('afterSync', { config, data });
 }
+//#endregion
 // Kick off
 if (import.meta.url === `file://${process.argv[1]}`) {
-await main().catch(err => {
+await main().catch(async err => {
   log(`❌ Fatal error: ${err}`, { err: 'error' });
+  await runHook('onError', { error: err });
   process.exit(1);
 })};
 await maybeSchedule();
