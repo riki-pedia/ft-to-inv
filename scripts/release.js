@@ -20,7 +20,7 @@ const owner = "riki-pedia";
 const repo = "ft-to-inv";   
 
 // --- GitHub API ---
-const token = process.env.GITHUB_TOKEN;
+const token = process.env.GITHUB_TOKEN || process.env.TOKEN;
 if (!token) {
   console.error("❌ Missing GITHUB_TOKEN env var");
   process.exit(1);
