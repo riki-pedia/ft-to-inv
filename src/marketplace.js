@@ -5,18 +5,24 @@ import { fileURLToPath } from "url";
 import fetch from "node-fetch";
 import https from "https";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_HEADERS = {
+  "User-Agent": "ft-to-inv-bot/1.0 (+https://dev.riki-pedia.org/projects/ft-to-inv.html)",
+  "Accept": "application/json",
+};
 
 function sha256(data) {
   return crypto.createHash("sha256").update(data).digest("hex");
 }
 function fetchText(url) {
+  const options = new URL(url);
+  options.headers = DEFAULT_HEADERS;
   return new Promise((resolve, reject) => {
-    https.get(url, res => {
+    https.get(options, res => {
       if (res.statusCode !== 200) {
         return reject(new Error(`Failed to fetch ${url}, HTTP ${res.statusCode}`));
       }
       let data = "";
-      res.on("data", chunk => data += chunk);
+      res.on("data", chunk => (data += chunk));
       res.on("end", () => resolve(data));
     }).on("error", reject);
   });
@@ -30,7 +36,7 @@ try {
   console.error(`Failed to load or parse registry from ${registryUrl}:`, err);
   throw err;
 }
-
+// this doesnt look like its used, but im too lazy to check rn
 async function downloadFile(url, dest, expectedSha) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to download ${url}: HTTP ${res.status}`);
@@ -81,7 +87,7 @@ export async function installPlugin(name, registry = regis) {
       const js = await fetchText(plugin.script);
       await verifyPlugin(plugin.script, plugin.scriptSha).catch(err => {
         console.error(`Failed to verify ${plugin.script}:`, err);
-        noErr = false;
+        hasNoErrors = false;
       });
       if (hasNoErrors === true) {
         fs.writeFileSync(jsonDest, json);
@@ -93,10 +99,10 @@ export async function installPlugin(name, registry = regis) {
 } else if (plugin.url && plugin.sha256) {
     // legacy format
     const scriptDest = path.join(pluginDir, `${name}.js`);
-   const js = await downloadFile(plugin.url, scriptDest, plugin.sha256);
-   await verifyPlugin(plugin.url, plugin.sha256).catch(err => {
+    const js = await fetchText(plugin.url);
+   await verifyPlugin(plugin.url, plugin.sha256 + 1).catch(err => {
      console.error(`Failed to verify ${plugin.url}:`, err);
-     noErr = false;
+     hasNoErrors = false;
    });
    if (hasNoErrors === true) {
      fs.writeFileSync(scriptDest, js);

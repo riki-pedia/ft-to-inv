@@ -6,6 +6,10 @@ import https from 'https';
 import http from 'http';
 import { log, logConsoleOutput } from './logs.js'
 let config = {}
+const DEFAULT_HEADERS = {
+  "User-Agent": "ft-to-inv-bot/1.0 (+https://dev.riki-pedia.org/projects/ft-to-inv.html)",
+  "Accept": "application/json",
+};
 // Load a newline-delimited JSON file into an array of objects
 export async function loadNDJSON(filePath) {
   const lines = readFileSync(filePath, 'utf-8').split(/\r?\n/);
@@ -107,7 +111,8 @@ export function postToInvidious(path, json = {}, token, instance, insecure = fal
       headers: {
         'Cookie': `SID=${token}`,
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload)
+        'Content-Length': Buffer.byteLength(payload),
+        ...DEFAULT_HEADERS
       }
     }, res => {
       let body = '';
@@ -176,7 +181,8 @@ export async function getChannelName(ucid, instance = INSTANCE) {
     const url = new URL(`/api/v1/channels/${ucid}`, instance).href;
     const res = await fetch(url, { headers:  {
         'Content-Type': 'application/json',
-        'Cookie': `SID=${TOKEN}`
+        'Cookie': `SID=${TOKEN}`,
+        ...DEFAULT_HEADERS
       } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -191,7 +197,8 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
     const url = new URL(`/api/v1/videos/${vid}`, instance).href;
     const res = await fetch(url, { headers:  {
         'Content-Type': 'application/json',
-        'Cookie': `SID=${token}`
+        'Cookie': `SID=${token}`,
+        ...DEFAULT_HEADERS
       } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
