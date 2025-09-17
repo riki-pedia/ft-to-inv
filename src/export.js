@@ -10,7 +10,7 @@
 // when theres a huge file, sort it a little
 // add some regions
 // please.
-// THIS FILES 975 LINES WHAT HAVE I DONE
+// THIS FILES 1300 LINES WHAT HAVE I DONE
 //#region imports and functions
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
@@ -43,6 +43,12 @@ import { clearFiles } from './clear-import-files.js';
 import hints from './hints.json' with { type: 'json' } 
 import { sanitize } from './sanitize.js';
 import { loadPlugins, runHook } from './loader.js';
+import { 
+  listInstalled, 
+  listStore,
+  installPlugin,
+  removePlugin
+} from './marketplace.js'
 
 const args = process.argv.slice(2);
 // cron is the only arg that should reasonably have spaces, so we handle it specially
@@ -120,8 +126,12 @@ const expectedArgs = {
   "CONFIG":             "--config, -c",
   "LOGS":               "--logs, -l",
   "HISTORY":            "--history, --dont-include-history, -hi",
-  "PLAYLISTS":          "--playlists, --dont-include-playlists, -p",
-  "SUBSCRIPTIONS":      "--subscriptions, --dont-include-subscriptions, -s"
+  "PLAYLISTS":          "--playlists, --dont-include-playlists, -pl",
+  "SUBSCRIPTIONS":      "--subscriptions, --dont-include-subscriptions, -s",
+  "PLUGINS":            "--plugins, -p",
+  "INSTALL":           "--install, -ins, --add, -add",
+  "LIST":              "--list, -list",
+  "MARKETPLACE":       "--marketplace, -m"
 }
 // list of args that should reasonably have values, like -t <value>
 const flagsExpectingValue = [
@@ -130,16 +140,21 @@ const flagsExpectingValue = [
   '--export-dir', '-e',
   '--freetube-dir', '-f', '-cd',
   '--cron-schedule', '-cron',
-  '--instance', '-i'
+  '--instance', '-i',
+  '--plugins', '-p',
+  '--remove', '-r',
+  '--install', '-ins',
+  '--list', '-list',
+  '--marketplace', '-m'
 ]
 const validShortFlags = [
-  '-t', '-c', '-e', '-f', '-cd', '-cron', '-i', '-fts', '-drs', '-h', '-?', '-q', '-v', '-p', '-hi', '-s', '-l'
+  '-t', '-c', '-e', '-f', '-cd', '-cron', '-i', '-fts', '-drs', '-h', '-?', '-q', '-v', '-pl', '-hi', '-s', '-l', '-p', '-ins', '-list', '-m', '-r', 
 ]
 const validPosArgs = [
-  'token', 'help', 'instance', 'verbose', 'dry-run', 'quiet', 'insecure', 'no-sync', 'export-dir', 'freetube-dir', 'cron-schedule', 'dont-shorten-paths', 'first-time-setup', 'dont-run-setup', 'config', 'logs', 'history', 'playlists', 'subscriptions', 'test'
+  'token', 'help', 'instance', 'verbose', 'dry-run', 'quiet', 'insecure', 'no-sync', 'export-dir', 'freetube-dir', 'cron-schedule', 'dont-shorten-paths', 'first-time-setup', 'dont-run-setup', 'config', 'logs', 'history', 'playlists', 'subscriptions', 'test', 'plugins', 'install', 'list', 'plugin', 'marketplace', 'remove', 'uninstall', 'add'
 ]
 const posArgsExpectingValue = [
-  'token', 'instance', 'export-dir', 'freetube-dir', 'cron-schedule', 'config', 'help', 
+  'token', 'instance', 'export-dir', 'freetube-dir', 'cron-schedule', 'config', 'help', 'plugins', 'install', 'marketplace', 'remove', 'uninstall', 'add'
 ]
 // gets args param from something like process.argv and checks it against expectedArgs
 // if its not expected, we exit early with an error
@@ -175,7 +190,7 @@ async function isExpectedArg(argList = args) {
       const cleanArg = eqIndex !== -1 ? a.substring(0, eqIndex) : a;
       if (!flatExpected.includes(cleanArg)) {
         console.error(`❌ Unknown argument: ${cleanArg}`);
-        process.exit(1);
+        throw new Error(`Unknown argument: ${cleanArg}`);
       }
       if (flagsExpectingValue.includes(cleanArg)) {
         // only mark next if value not inline (--opt=val)
@@ -212,7 +227,7 @@ async function isExpectedArg(argList = args) {
       }
     else {
       console.error(`❌ Unexpected positional argument: ${a}`);
-      //process.exit(1);
+      throw new Error(`Unexpected positional argument: ${a}`);
     }
   }
 
@@ -230,11 +245,12 @@ let OUTPUT_FILE, OLD_EXPORT_PATH;
 let FIRST_TIME_SETUP = false; // flag to indicate if we should run the first-time setup
 let LOGS_BOOLEAN, LOGS
 
-let PLAYLISTS, HISTORY, SUBS
+let PLUGINS, INSTALL, LIST, MARKETPLACE, REMOVE;
+let PLAYLISTS, HISTORY, SUBS;
 
 // should be global so utils can access it
-let FREETUBE_DIR 
-let EXPORT_DIR 
+let FREETUBE_DIR;
+let EXPORT_DIR;
 // -- Bootstrap & main flow --
 /**
  * Resolves a boolean flag from CLI args or config file.
@@ -313,6 +329,7 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
   // run once
   // runs below main() so we shouldn't call it here, just tell the user
   log('✅ Initial sync complete, now scheduling recurring job...');
+  await runHook('cronWait', {cron: CRON_SCHEDULE});
   startHints();
   // run on interval
   cron.schedule(CRON_SCHEDULE, async () => {
@@ -328,8 +345,6 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
 //#region main
 // Main function to run the export and sync process
 export async function main(overrides = {}) {
-  await loadPlugins();
-  await runHook('beforeMain', { overrides });
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
@@ -353,6 +368,72 @@ export async function main(overrides = {}) {
     config = loadConfig(configPath);
   }
   await setConfig(config);
+  
+   PLUGINS = await resolveConfig('plugins', {
+    cliNames: ['--plugins', '-p'],
+    envNames: ['FT_TO_INV_CONFIG_PLUGINS', 'PLUGINS', 'FT_TO_INV_PLUGINS'],
+    config: config,
+    args: args,
+    positionalArgs: ['plugins', 'plugin']
+  });
+  if (typeof PLUGINS === 'string' ) {
+  if(PLUGINS.toLowerCase() === 'list') {
+      await listInstalled();
+      return
+  }
+  else if (PLUGINS.toLowerCase() === 'add' || PLUGINS.toLowerCase() === 'install') {
+       log('install a plugin with ft-to-inv install <plugin-name>')
+       return
+  }}
+  INSTALL = await resolveConfig('install', {
+    cliNames: ['--install', '-ins'],
+    envNames: ['FT_TO_INV_CONFIG_INSTALL', 'INSTALL', 'FT_TO_INV_INSTALL'],
+    config: config,
+    args: args,
+    positionalArgs: ['install', 'add']
+  });
+  if (INSTALL !== undefined && INSTALL !== null && typeof INSTALL === 'string' && INSTALL !== '') {
+    await installPlugin(INSTALL)
+    return;
+  }
+  // lists installed plugins
+  LIST = await resolveConfig('list', {
+    cliNames: ['--list', '-list'],
+    envNames: ['FT_TO_INV_CONFIG_LIST', 'LIST', 'FT_TO_INV_LIST'],
+    config: config,
+    args: args,
+    isFlag: true,
+    positionalArgs: ['list']
+  });
+  if (LIST) {
+    await listInstalled();
+    return;
+  }
+  MARKETPLACE = await resolveConfig('marketplace', {
+    cliNames: ['--marketplace', '-m'],
+    envNames: ['FT_TO_INV_CONFIG_MARKETPLACE', 'MARKETPLACE', 'FT_TO_INV_MARKETPLACE'],
+    config: config,
+    args: args,
+    isFlag: true,
+    positionalArgs: ['marketplace']
+  });
+  if (MARKETPLACE) {
+    await listStore();
+    return;
+  }
+  REMOVE = await resolveConfig('remove', {
+    cliNames: ['--remove', '-r'],
+    envNames: ['FT_TO_INV_CONFIG_REMOVE', 'REMOVE', 'FT_TO_INV_REMOVE'],
+    config: config,
+    args: args,
+    positionalArgs: ['remove', 'uninstall']
+  });
+  if (REMOVE !== undefined && REMOVE !== null && typeof REMOVE === 'string' && REMOVE !== '') {
+    await removePlugin(REMOVE);
+    return;
+  }
+  await loadPlugins();
+  await runHook('beforeMain', { overrides });
 const clearFilesFlag = resolveFlagArg(args, ['--clear', '--clear-files', '--delete-files'], {}, null)
 const clearConfigFlag = resolveFlagArg(args, ['--clear-config'], {}, null)
 if (clearFilesFlag === true || clearConfigFlag === true) {
@@ -525,7 +606,27 @@ runHook('duringMain', {overrides})
   HELPCMD = overrides.helpcmd || HELPCMD;
   SUBS = overrides.subscriptions || SUBS;
   PLAYLISTS = overrides.playlists || PLAYLISTS;
-  await runHook('afterMain', { overrides, config });
+  const conf = {
+    instance: INSTANCE,
+    token: TOKEN,
+    freetube_dir: FREETUBE_DIR,
+    export_dir: EXPORT_DIR,
+    verbose: VERBOSE,
+    dry_run: DRY_RUN,
+    dont_shorten_paths: DONT_SHORTEN_PATHS,
+    no_sync: NOSYNC,
+    quiet: QUIET,
+    insecure: INSECURE,
+    cron_schedule: CRON_SCHEDULE,
+    logs: LOGS_BOOLEAN,
+    history: HISTORY,
+    helpcmd: HELPCMD,
+    subscriptions: SUBS,
+    playlists: PLAYLISTS
+  }
+  // needed to change because config was always {}
+  // this is only so plugins can use it
+  await runHook('afterMain', { overrides, conf });
   // leaving this one, exits early
   HELP               = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help');
   //#endregion
@@ -956,7 +1057,9 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
    const prettyRemovedHistory = [];
    const prettyRemovedSubs = [];
    const prettyRemovedPlaylists = [];
-   await runHook('duringSync', {data: output})
+
+   const newData = {history: newHistory, subs: newSubs, playlists: newPlaylists};
+   await runHook('duringSync', {data: newData})
   if (DRY_RUN) {
    for (const id of newHistory) {
       const video = await getVideoNameAndAuthor(id, INSTANCE, TOKEN);
@@ -1067,7 +1170,6 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
       hadErrors = true;
       log(`❌ ${label}: ${error.message || error}`, { err: 'error' });
       certErrorHint(error);
-      await runHook('onError', { error });
     };
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
@@ -1205,6 +1307,7 @@ let removedHisCnt = 0;
         log(`Sync complete. Exported to ${stripDir(OUTPUT_FILE)} and updated ${stripDir(OLD_EXPORT_PATH)}`);
       }
     } else {
+      await runHook('onError', { error: 'check cmd' });
       log('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', { err: 'warning' });
     }
   } else {
@@ -1212,18 +1315,24 @@ let removedHisCnt = 0;
       noSyncWrite(output, OUTPUT_FILE, QUIET);
       }
     else {
+      // do this stupid log message because i dont have data from markerror
+      // i know i could just pass the error message, but i want to release this sooner
+      await runHook('onError', { error: 'look at the terminal idk bro' });
       log('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', { err: 'warning' });
     }
   }
-await runHook('afterSync', { data: output });
+await runHook('afterSync', { data: newData });
 }
 //#endregion
 // Kick off
-//if (import.meta.url === `file://${process.argv[1]}`) {
-await main().catch( err => {
+await main().catch( async err => {
   log(`❌ Fatal error: ${err}`, { err: 'error' });
-  runHook('onError', { error: err });
+  logConsoleOutput();
+  await runHook('onError', { error: err });
+  console.log('waiting for writes to finish before exiting')
+setTimeout(() => {
   process.exit(1);
-})//};
+}, 100);
+})
 await maybeSchedule();
 logConsoleOutput();

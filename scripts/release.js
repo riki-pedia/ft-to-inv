@@ -77,7 +77,15 @@ async function main() {
 
   // --- Step 4: GitHub release ---
   // note: files are read from the dir the command is run from, not where the script is
-  run(`gh release create v${version} --title "v${version}" -F ${releaseName}`);
+  await octokit.rest.repos.createRelease({
+    owner,
+    repo,
+    tag_name: `v${version}`,
+    name: `v${version}`,
+    body: fs.readFileSync(releaseName, "utf8"),
+    draft: false,
+    prerelease: false
+  });
 
   console.log(`✅ Release v${version} created successfully!`);
 
