@@ -1,8 +1,11 @@
 name: CI
+permissions:
+  contents: read
 on:
   push:
     branches: [master, main]
   pull_request:
+    # im pretty good at forgetting which branch i used, specifically which tool i made it with (gh and GitHub desktop usually main, vs, git cli usually master)
     branches: [master, main]
 
 jobs:
@@ -56,9 +59,52 @@ jobs:
           sleep 1
           # give time to finish
       - name: Upload logs
+        if: ${{ env.ACT != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: ft-to-inv-logs
           path: |
             ft-to-inv-*.log
             ci-output.log
+  scan:
+   runs-on: ubuntu-latest
+   env:
+     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+   steps:
+    - name: 🚧 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: Run ESLint
+      run: |
+        npm install
+        npx eslint . --ext .js,.mjs,.cjs,.ts || true
+
+    - name: Run Semgrep (official Docker)
+      uses: docker://semgrep/semgrep
+      with:
+        args: semgrep --config=auto --sarif --output=./semgrep.sarif ./
+
+    - name: List files after Semgrep
+      run: ls -lh ./
+
+    - name: Upload Semgrep results
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ./semgrep.sarif
+
+    - name: Run Gitleaks
+      uses: zricethezav/gitleaks-action@v2
+      with:
+       args: detect --redact --exit-code 1 --report-format sarif --report-path gitleaks-results.sarif
+
+    - name: Run npm audit
+      run: npm audit --production --audit-level=moderate || true
