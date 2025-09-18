@@ -65,42 +65,40 @@ jobs:
             ft-to-inv-*.log
             ci-output.log
   scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🚧 Checkout code
-        uses: actions/checkout@v4
+   runs-on: ubuntu-latest
+   steps:
+    - name: 🚧 Checkout code
+      uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18.x'
-          cache: 'npm'
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
 
-      # 🔍 ESLint
-      - name: Run ESLint
-        run: |
-          npm install
-          npx eslint . --ext .js,.mjs,.cjs,.ts || true
+    - name: Run ESLint
+      run: |
+        npm install
+        npx eslint . --ext .js,.mjs,.cjs,.ts || true
 
-      # 🔍 Semgrep
-      - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-         config: p/ci
-         generateSarif: true
-         output: semgrep.sarif
-      - name: Upload Semgrep results
-        if: always()
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: semgrep.sarif
+    - name: Run Semgrep (official Docker)
+      uses: docker://semgrep/semgrep
+      with:
+        args: ci
 
-      # 🔍 Gitleaks (secrets scanning)
-      - name: Run Gitleaks
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          args: detect --redact --exit-code 1
+    - name: List files after Semgrep
+      run: ls -lh ./
 
-      # Optional: npm audit (or Snyk)
-      - name: Run npm audit
-        run: npm audit --production --audit-level=moderate || true
+    - name: Upload Semgrep results
+      if: always()
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: ./semgrep.sarif
+
+    - name: Run Gitleaks
+      uses: zricethezav/gitleaks-action@v2
+      with:
+        args: detect --redact --exit-code 1
+
+    - name: Run npm audit
+      run: npm audit --production --audit-level=moderate || true
