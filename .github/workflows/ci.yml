@@ -86,8 +86,9 @@ jobs:
       - name: Run Semgrep
         uses: returntocorp/semgrep-action@v1
         with:
-          args: --config "p/ci" --sarif --output=semgrep.sarif
-
+         config: p/ci
+         generateSarif: true
+         output: semgrep.sarif
       - name: Upload Semgrep results
         if: always()
         uses: github/codeql-action/upload-sarif@v2
