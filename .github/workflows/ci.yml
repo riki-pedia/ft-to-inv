@@ -66,6 +66,8 @@ jobs:
             ci-output.log
   scan:
    runs-on: ubuntu-latest
+   env:
+     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
    steps:
     - name: 🚧 Checkout code
       uses: actions/checkout@v4
