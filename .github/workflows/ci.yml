@@ -3,6 +3,7 @@ on:
   push:
     branches: [master, main]
   pull_request:
+    # im pretty good at forgetting which branch i used, specifically which tool i made it with (gh and GitHub desktop usually main, vs, git cli usually master)
     branches: [master, main]
 
 jobs:
@@ -56,9 +57,49 @@ jobs:
           sleep 1
           # give time to finish
       - name: Upload logs
+        if: ${{ env.ACT != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: ft-to-inv-logs
           path: |
             ft-to-inv-*.log
             ci-output.log
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚧 Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+
+      # 🔍 ESLint
+      - name: Run ESLint
+        run: |
+          npm install
+          npx eslint . --ext .js,.mjs,.cjs,.ts || true
+
+      # 🔍 Semgrep
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          args: --config "p/ci" --sarif --output=semgrep.sarif
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: semgrep.sarif
+
+      # 🔍 Gitleaks (secrets scanning)
+      - name: Run Gitleaks
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: detect --redact --exit-code 1
+
+      # Optional: npm audit (or Snyk)
+      - name: Run npm audit
+        run: npm audit --production --audit-level=moderate || true
