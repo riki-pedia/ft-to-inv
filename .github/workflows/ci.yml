@@ -71,6 +71,8 @@ jobs:
    steps:
     - name: 🚧 Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -100,7 +102,7 @@ jobs:
     - name: Run Gitleaks
       uses: zricethezav/gitleaks-action@v2
       with:
-        args: detect --redact --exit-code 1
+       args: detect --redact --exit-code 1 --report-format sarif --report-path gitleaks-results.sarif
 
     - name: Run npm audit
       run: npm audit --production --audit-level=moderate || true
