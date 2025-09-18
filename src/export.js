@@ -12,6 +12,7 @@
 // please.
 // THIS FILES 1300 LINES WHAT HAVE I DONE
 //#region imports and functions
+// test comment for workflow
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
 import {
