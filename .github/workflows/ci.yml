@@ -83,8 +83,6 @@ jobs:
 
     - name: Run Semgrep (official Docker)
       uses: docker://semgrep/semgrep
-      with:
-        args: ci
 
     - name: List files after Semgrep
       run: ls -lh ./
