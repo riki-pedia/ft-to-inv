@@ -107,7 +107,7 @@ jobs:
 
     - name: Run Gitleaks
     # id imagine this fails
-      uses: zricethezav/gitleaks-action@07d6e4e
+      uses: zricethezav/gitleaks-action@v2
       with:
        args: detect --redact --exit-code 1 --report-format sarif --report-path gitleaks-results.sarif
 
