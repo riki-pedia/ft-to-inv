@@ -1,4 +1,5 @@
 name: CI
+# perms block here, but it might only apply to the ci portion
 permissions:
   contents: read
   security-events: write
@@ -6,7 +7,7 @@ on:
   push:
     branches: [master, main]
   pull_request:
-    # im pretty good at forgetting which branch i used, specifically which tool i made it with (gh and GitHub desktop usually main, vs, git cli usually master)
+    # im pretty good at forgetting which branch i used, specifically which tool i made it with (gh and GitHub desktop usually main, vs and git cli usually master)
     branches: [master, main]
 
 jobs:
@@ -43,7 +44,7 @@ jobs:
         env:
           MOCK_PORT: 9999
           INSTANCE: http://127.0.0.1:9999
-          # SANITIZED!
+          # i fell asleep on the keyboard to get this token, but it technically works with my "sanitation" (the = and 40ish chars is all you need)
           TOKEN: abnghjksdhghjukzdbghjkasdbgjkhasdbgukhjasdbgkhjasdbghjadsb=
           EXPORT_DIR: ./exports
           FREETUBE_DIR: ./dummy-ft
@@ -70,6 +71,7 @@ jobs:
   scan:
    runs-on: ubuntu-latest
    env:
+    # have perms at the top of file, but they likely dont apply here
      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
    steps:
     - name: 🚧 Checkout code
@@ -88,12 +90,13 @@ jobs:
         npm install
         npx eslint . --ext .js,.mjs,.cjs,.ts || true
 
-    - name: Run Semgrep (official Docker)
+    - name: Run Semgrep
       uses: docker://semgrep/semgrep
       with:
         args: semgrep --config=auto --sarif --output=./semgrep.sarif ./
 
     - name: List files after Semgrep
+    # debug, can prob delete
       run: ls -lh ./
 
     - name: Upload Semgrep results
@@ -103,9 +106,11 @@ jobs:
         sarif_file: ./semgrep.sarif
 
     - name: Run Gitleaks
-      uses: zricethezav/gitleaks-action@v2
+    # id imagine this fails
+      uses: zricethezav/gitleaks-action@07d6e4e
       with:
        args: detect --redact --exit-code 1 --report-format sarif --report-path gitleaks-results.sarif
 
     - name: Run npm audit
+    # found this command online, it seems to work ok, but idk what the || true does
       run: npm audit --production --audit-level=moderate || true

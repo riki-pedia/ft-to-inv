@@ -90,6 +90,7 @@ export async function installPlugin(name, registry = regis) {
         hasNoErrors = false;
       });
       if (hasNoErrors === true) {
+        // looks dangerous, but comes from my website, and i verify the sha256
         fs.writeFileSync(jsonDest, json);
         fs.writeFileSync(scriptDest, js);
       }
@@ -105,6 +106,7 @@ export async function installPlugin(name, registry = regis) {
      hasNoErrors = false;
    });
    if (hasNoErrors === true) {
+    // def issue here, but its legacy so idc
      fs.writeFileSync(scriptDest, js);
    }
   } else {
