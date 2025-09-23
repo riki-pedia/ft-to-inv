@@ -69,12 +69,16 @@ async function main() {
   run("npm publish --registry https://registry.npmjs.org");
 
   // --- Step 3: git tag + push ---
-  run(`git commit -a -m "chore: release v${version}. ran by automation script"`)
   run(`git tag v${version}`);
+  run(`git commit -a -m "chore: release v${version}. ran by automation script"`)
+  // ssh here because github desktop uses https and fails
   run("git push --tags git@github.com:riki-pedia/ft-to-inv.git");
   // need this to push on master
+  try {
   run(`git push git@github.com:riki-pedia/ft-to-inv.git`);
-
+  } catch (e) {
+    console.warn("⚠️ Failed to push to GitHub. Continuing anyway. The error was:", e);
+  }
   // --- Step 4: GitHub release ---
   // note: files are read from the dir the command is run from, not where the script is
   await octokit.rest.repos.createRelease({

@@ -20,7 +20,7 @@
     "type": "git",
     "url": "git+https://github.com/riki-pedia/ft-to-inv.git"
   },
-  "types": "types/index.d.ts",
+  "types": "types/export.d.ts",
   "files": [
     "src",
     "types"

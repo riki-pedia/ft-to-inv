@@ -13,7 +13,7 @@
 // THIS FILES 1300 LINES WHAT HAVE I DONE
 //#region imports and functions
 // test comment for workflow
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, realpathSync } from 'fs';
 import { resolve, join } from 'path';
 import {
    loadConfig,
@@ -48,7 +48,7 @@ import {
   installPlugin,
   removePlugin
 } from './marketplace.js'
-
+import { fileURLToPath } from "url";
 const args = process.argv.slice(2);
 // cron is the only arg that should reasonably have spaces, so we handle it specially
 const getArg = (name, fallback = null) => {
@@ -1319,6 +1319,7 @@ let removedHisCnt = 0;
     else {
       // do this stupid log message because i dont have data from markerror
       // i know i could just pass the error message, but i want to release this sooner
+      // this is extremely unprofessional, but that also reflects on the code quality
       await runHook('onError', { error: 'look at the terminal idk bro' });
       log('⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.', { err: 'warning' });
     }
@@ -1327,6 +1328,9 @@ await runHook('afterSync', { data: newData });
 }
 //#endregion
 // Kick off
+const modulePath = realpathSync(fileURLToPath(import.meta.url));
+const entryPath = realpathSync(resolve(process.argv[1] || ""));
+if (modulePath === entryPath) {
 await main().catch( async err => {
   log(`❌ Fatal error: ${err}`, { err: 'error' });
   logConsoleOutput();
@@ -1335,6 +1339,8 @@ await main().catch( async err => {
 setTimeout(() => {
   process.exit(1);
 }, 100);
-})
+});
+};
 await maybeSchedule();
 logConsoleOutput();
+export default main;
