@@ -79,7 +79,7 @@ export async function sanitize(input, {
         try {
             cron.validate(input.cron_schedule);
         } catch (err) {
-            log('Invalid cron schedule format', { err: 'error' });
+            log('Invalid cron schedule format. The error was: ' + err.message || err, { err: 'error' });
             process.exit(1);
         }
     }

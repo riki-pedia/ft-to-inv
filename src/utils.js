@@ -19,7 +19,7 @@ export async function loadNDJSON(filePath) {
       try {
         results.push(JSON.parse(line));
       } catch (err) {
-        log(`❌ Could not parse line in ${filePath}: ${line}`, { err: 'warning' });
+        log(`❌ Could not parse line in ${filePath}: ${line}. the error was: ${err.message || err}`, { err: 'warning' });
       }
     }
   }
@@ -67,7 +67,6 @@ export function noSyncWrite(outputObj, outputPath, quiet) {
   writeFileSync(outputPath, json);
   if (!quiet) log(`✅ Wrote export to ${outputPath} (no-sync mode)`);
 }
-let INSECURE = config.insecure || false;
 let INSTANCE = config.instance;
 let TOKEN = config.token;
 function sleep(ms) {

@@ -4,15 +4,6 @@ import { join, normalize, resolve as _resolve } from 'path';
 import { createInterface } from 'readline';
 import { parse } from 'comment-json';
 
-const args = process.argv.slice(2);
-const getArg = (name, fallback = null) => {
-  const index = args.findIndex(arg => arg === name || arg.startsWith(name + '='));
-  if (index !== -1) {
-    const split = args[index].split('=');
-    return split.length > 1 ? split[1] : args[index + 1];
-  }
-  return fallback;
-};
 /**
  * Get the value of an environment variable.
  * @param {string} option - The name of the environment variable to retrieve.

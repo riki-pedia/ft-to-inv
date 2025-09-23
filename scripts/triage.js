@@ -41,6 +41,7 @@ import notifier from "node-notifier";
 import fs from "fs";
 import path from "path";
 // not used yet, but might be useful later
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const args = process.argv.slice(2);
 
 async function getSnippetForAlert(octokit, owner, repo, alert) {

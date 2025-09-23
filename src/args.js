@@ -2,9 +2,13 @@
 // i dont actually need to import :D
 // Handles both `--flag value` and `--flag=value`
 // was almost safe from the ES nonsense
-const args = process.argv.slice(2);
 const getArg = (args, names) => {
   for (const name of names) {
+    // args here is a param for the function, not process.argv
+    // you would pass in process.argv.slice(2) or something else
+    // is it smart? probably not
+    // does it work? yes
+    // is it worth the effort to make it smarter? no
     const index = args.findIndex(arg => arg === name || arg.startsWith(name + '='));
     if (name === '--cron' || name === '-cron' || name === '--cron-schedule') {
      const cronParts = args.slice(index + 1, index + 6);
@@ -63,6 +67,8 @@ export async function resolveConfig(
     const envVal = resolveEnvVars(envNames);
     if (envVal !== undefined) return envVal === 'true';
     // 4. Config
+    // ignore linter, looks really dumb when you type it out. 
+    // eslint-disable-next-line no-prototype-builtins
     if (config.hasOwnProperty(key)) return config[key] === true;
     return false;
   } else {
@@ -80,6 +86,7 @@ export async function resolveConfig(
     const envVal = resolveEnvVars(envNames);
     if (envVal !== undefined) return envVal;
     // 4. Config
+    // eslint-disable-next-line no-prototype-builtins
     if (config.hasOwnProperty(key)) return config[key];
     return fallback;
   }

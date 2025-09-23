@@ -1,10 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { fileURLToPath } from "url";
-import fetch from "node-fetch";
 import https from "https";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_HEADERS = {
   "User-Agent": "ft-to-inv-bot/1.0 (+https://dev.riki-pedia.org/projects/ft-to-inv.html)",
   "Accept": "application/json",
@@ -35,20 +32,6 @@ try {
 } catch (err) {
   console.error(`Failed to load or parse registry from ${registryUrl}:`, err);
   throw err;
-}
-// this doesnt look like its used, but im too lazy to check rn
-async function downloadFile(url, dest, expectedSha) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to download ${url}: HTTP ${res.status}`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  const actualSha = sha256(buf);
-  if (expectedSha && actualSha.toLowerCase() !== expectedSha.toLowerCase()) {
-    throw new Error(
-      `❌ SHA mismatch for ${url}. Expected ${expectedSha}, got ${actualSha}`
-    );
-  }
-  fs.writeFileSync(dest, buf);
-  return actualSha;
 }
 let hasNoErrors = true;
 async function verifyPlugin(url, sha) {

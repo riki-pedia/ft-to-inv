@@ -20,7 +20,6 @@ import {
    runFirstTimeSetup,
    getDefaultFreeTubeDir,
    normalizePath,
-   getEnv,
    prompt 
 } from './config.js';
 import { 
@@ -28,8 +27,7 @@ import {
   extractSubscriptions, 
   readOldExport, 
   writeNewExport, 
-  noSyncWrite, 
-  postToInvidious, 
+  noSyncWrite,
   getChannelName, 
   writePlaylistImport, 
   getVideoNameAndAuthor,
@@ -235,8 +233,6 @@ async function isExpectedArg(argList = args) {
   return true;
 }
 
-let warn = true;
-let error = true;
 const consoleOutput = []
 
 // -- Globals (to be assigned in bootstrap) --
@@ -244,7 +240,9 @@ let TOKEN, INSTANCE, VERBOSE, DRY_RUN, QUIET, INSECURE, NOSYNC, HELP, CRON_SCHED
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH;
 let OUTPUT_FILE, OLD_EXPORT_PATH;
 let FIRST_TIME_SETUP = false; // flag to indicate if we should run the first-time setup
-let LOGS_BOOLEAN, LOGS
+// this is a false linter error, its used in main()
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let LOGS_BOOLEAN, LOGS;
 
 let PLUGINS, INSTALL, LIST, MARKETPLACE, REMOVE;
 let PLAYLISTS, HISTORY, SUBS;
@@ -270,6 +268,7 @@ function resolveFlagArg(args, aliases, config, configKey, envKey) {
   // If not present in CLI, defer to env then config
   const envVal = resolveEnvVars(envKey);
   if (envVal !== undefined) return sanitizeEnvBoolean(envVal);
+  // eslint-disable-next-line no-prototype-builtins
   if (config.hasOwnProperty(configKey)) {
     return config[configKey] === true;
   }
@@ -278,7 +277,7 @@ function resolveFlagArg(args, aliases, config, configKey, envKey) {
 async function isValidCron(cronString) {
   try {
    return cron.validate(cronString);
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -977,6 +976,8 @@ export async function sync() {
     if (SUBS === true) {
       subscriptions = [];
     }
+    // disabled because || [] is to catch undefined, but map on undefined errors anyway
+    // eslint-disable-next-line no-constant-binary-expression
     const watch_history = [...new Set(historyData.map(entry => entry.videoId))] || [];
 
     const seenPlaylists = new Set();

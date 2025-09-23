@@ -11,9 +11,11 @@ export interface PluginMeta {
 
 /** Context object passed into hooks */
 export interface HookContext {
-  config?: any;              // resolved config for ft-to-inv
-  overrides?: Record<string, any>; // runtime overrides from main()
-  data?: Record<string, any>;      // sync/export data
+  config?: object;              // resolved config for ft-to-inv
+  overrides?: Record<string, object>; // runtime overrides from main()
+  data?: Record<string, object>;      // sync/export data
+  // eslint really hates this but its the only way to allow extensions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;              // allow extension
 }
 
