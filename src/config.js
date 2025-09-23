@@ -67,7 +67,7 @@ export function resolvePaths(config) {
     PROFILE_PATH: join(base, 'profiles.db'),
     EXPORT_DIR: exportDir,
     OUTPUT_FILE: join(exportDir, 'invidious-import.json'),
-    OLD_EXPORT_PATH: join(exportDir, 'last-export.json'),
+    OLD_EXPORT_PATH: join(exportDir, 'import.old.json'),
   };
 }
 
