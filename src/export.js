@@ -15,6 +15,7 @@
 // test comment for workflow
 import { existsSync, readFileSync, writeFileSync, realpathSync } from 'fs';
 import { resolve, join } from 'path';
+import { Octokit } from 'octokit';
 import {
    loadConfig,
    runFirstTimeSetup,
@@ -341,12 +342,45 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
   });
 }
 }
+// === UPDATE PER RELEASE ===
+const currentTag = 'v1.0.3';
+async function getLatestRelease() {
+  try {
+    log('Checking for updates...', { err: 'info' });
+    const octokit = new Octokit();
+    const response = await octokit.request('GET /repos/{owner}/{repo}/releases/latest', {
+      owner: 'riki-pedia',
+      repo: 'ft-to-inv'
+    });
+    const latestTag = response.data.tag_name;
+    if (latestTag !== currentTag) {
+      log(`🔄 New release available: ${latestTag} (current: ${currentTag})`, { err: 'info' });
+      return latestTag;
+    } else {
+      log(`✅ You are running the latest release: ${currentTag}`, { err: 'info' });
+      return currentTag;
+    }
+  } catch (error) {
+    log(`❌ Error fetching latest release: ${error}`, { err: 'error' });
+    return null;
+  }
+
+}
+// i thought about self-updating but that seems like a bad idea
+async function maybeUpdate() {
+  const latest = await getLatestRelease();
+  if (latest && latest !== currentTag) {
+    log(`📣 A new version (${latest}) is available! Please update from ${currentTag} to the latest version.`, { err: 'info' });
+    log(` You can install it with: \`npm install -g ft-to-inv@${latest}\``, { err: 'info' });
+}
+}
 //#endregion
 //#region main
 // Main function to run the export and sync process
 export async function main(overrides = {}) {
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
+  await maybeUpdate();
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
   const ENV_CONFIG_PATH = normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG', 'FT_TO_INV_CONFIG_PATH', 'FT_INV_CONFIG', 'CONFIG']));
   // we parse configPath in config.js, but this gets used for checking if it's the first run
