@@ -40,7 +40,7 @@ import { resolveConfig } from './args.js';
 import { logConsoleOutput, log } from './logs.js'
 import cron from 'node-cron';
 import { clearFiles } from './clear-import-files.js';
-import hints from './hints.json' with { type: 'json' } 
+import hints from './hints.json' assert { type: 'json' } 
 import { sanitize } from './sanitize.js';
 import { loadPlugins, runHook } from './loader.js';
 import { 
