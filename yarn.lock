@@ -1024,10 +1024,10 @@ octokit@^5.0.0:
     "@octokit/types" "^14.0.0"
     "@octokit/webhooks" "^14.0.0"
 
-ollama@^0.5.18:
-  version "0.5.18"
-  resolved "https://registry.yarnpkg.com/ollama/-/ollama-0.5.18.tgz#10b8ee9e5cd840f2003b7bbea1802dd772e6a564"
-  integrity sha512-lTFqTf9bo7Cd3hpF6CviBe/DEhewjoZYd9N/uCe7O20qYTvGqrNOFOBDj3lbZgFWHUgDv5EeyusYxsZSLS8nvg==
+ollama@^0.6.0:
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/ollama/-/ollama-0.6.0.tgz#3a4aefa155ff3e245d66b8aa78e17b132b5a05e5"
+  integrity sha512-FHjdU2Ok5x2HZsxPui/MBJZ5J+HzmxoWYa/p9wk736eT+uAhS8nvIICar5YgwlG5MFNjDR6UA5F3RSKq+JseOA==
   dependencies:
     whatwg-fetch "^3.6.20"
 
