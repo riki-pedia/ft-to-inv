@@ -1,6 +1,6 @@
 {
   "name": "ft-to-inv",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Converts FreeTube data to Invidious format and syncs with the Invidious API.",
   "keywords": [
     "FreeTube",
@@ -43,14 +43,17 @@
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "node-notifier": "^10.0.1",
-    "strip-json-comments": "^5.0.3"
+    "prettier": "^3.6.2",
+    "strip-json-comments": "^5.0.3",
+    "typescript": "^5.9.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "eslint": "^9.35.0",
     "globals": "^16.4.0",
+    "lefthook": "^1.13.4",
     "octokit": "^5.0.0",
-    "ollama": "^0.5.18",
+    "ollama": "^0.6.0",
     "typescript-eslint": "^8.44.0"
   }
 }

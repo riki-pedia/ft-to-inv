@@ -70,7 +70,12 @@ async function main() {
 
   // --- Step 3: git tag + push ---
   run(`git tag v${version}`);
+  try {
   run(`git commit -a -m "chore: release v${version}. ran by automation script"`)
+  }
+  catch (e) {
+    console.warn(" doesnt look like theres anything to commit, or maybe lefthook blocked it. Continuing anyway. The error was:", e);
+  }
   // ssh here because github desktop uses https and fails
   run("git push --tags git@github.com:riki-pedia/ft-to-inv.git");
   // need this to push on master

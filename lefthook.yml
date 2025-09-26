@@ -1,0 +1,18 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      run: npx eslint .
+    linux-test:
+      run: |
+       # this is for my windows pc, good luck contributors
+       wsl -d ubuntu
+       npm test
+    windows-test:
+      run: npm test
+
+pre-push:
+  parallel: false
+  commands:
+    test:
+      run: npm test
