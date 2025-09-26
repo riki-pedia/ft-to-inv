@@ -13,6 +13,7 @@
 // THIS FILES 1300 LINES WHAT HAVE I DONE
 //#region imports and functions
 // test comment for workflow
+// i dont know why i decided to import fs and path like this
 import { existsSync, readFileSync, writeFileSync, realpathSync } from 'fs';
 import { resolve, join } from 'path';
 import { Octokit } from 'octokit';
@@ -40,8 +41,9 @@ import { resolveConfig } from './args.js';
 import { logConsoleOutput, log } from './logs.js'
 import cron from 'node-cron';
 import { clearFiles } from './clear-import-files.js';
-import hints from './hints.json' assert { type: 'json' } 
-import { sanitize } from './sanitize.js';
+const dirname = fileURLToPath(new URL('.', import.meta.url));
+const hintsPath = join(dirname, 'hints.json');
+const hints = JSON.parse(readFileSync(hintsPath, "utf-8"));import { sanitize } from './sanitize.js';
 import { loadPlugins, runHook } from './loader.js';
 import { 
   listInstalled, 
@@ -343,7 +345,7 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
 }
 }
 // === UPDATE PER RELEASE ===
-const currentTag = 'v1.0.3';
+const currentTag = 'v1.0.5';
 async function getLatestRelease() {
   try {
     log('Checking for updates...', { err: 'info' });
