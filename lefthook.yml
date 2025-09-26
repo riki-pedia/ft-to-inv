@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      run: npx eslint .
+    format:
+      run: npm run prettier --check .
+    typecheck:
+      run: npx tsc --noEmit
+
+pre-push:
+  parallel: false
+  commands:
+    test:
+      run: npm test

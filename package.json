@@ -43,7 +43,9 @@
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "node-notifier": "^10.0.1",
-    "strip-json-comments": "^5.0.3"
+    "prettier": "^3.6.2",
+    "strip-json-comments": "^5.0.3",
+    "tsc": "^2.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
