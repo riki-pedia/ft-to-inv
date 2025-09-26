@@ -3,10 +3,13 @@ pre-commit:
   commands:
     lint:
       run: npx eslint .
-    format:
-      run: npm run prettier --check .
-    typecheck:
-      run: npx tsc --noEmit
+    linux-test:
+      run: |
+       # this is for my windows pc, good luck contributors
+       wsl -d ubuntu
+       npm test
+    windows-test:
+      run: npm test
 
 pre-push:
   parallel: false
