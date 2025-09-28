@@ -43,7 +43,7 @@ import cron from 'node-cron';
 import { clearFiles } from './clear-import-files.js';
 const dirname = fileURLToPath(new URL('.', import.meta.url));
 const hintsPath = join(dirname, 'hints.json');
-const hints = JSON.parse(readFileSync(hintsPath, "utf-8"));import { sanitize } from './sanitize.js';
+const hints = JSON.parse(readFileSync(hintsPath, "utf-8"));import { sanitizeConfig, sanitizePath } from './sanitize.js';
 import { loadPlugins, runHook } from './loader.js';
 import { 
   listInstalled, 
@@ -53,6 +53,14 @@ import {
 } from './marketplace.js'
 import { fileURLToPath } from "url";
 const args = process.argv.slice(2);
+
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
+
+console.log(`ft-to-inv v${version}:`);
+//#endregion
+//#region helper functions
 // cron is the only arg that should reasonably have spaces, so we handle it specially
 const getArg = (name, fallback = null) => {
   const index = args.findIndex(arg => arg === name || arg.startsWith(name + '='));
@@ -344,19 +352,21 @@ if (typeof CRON_SCHEDULE !== 'string' || CRON_SCHEDULE.trim() === ''  || validCr
   });
 }
 }
-// === UPDATE PER RELEASE ===
-const currentTag = 'v1.0.5';
+// this new logic checks from package.json
+// compares current version to latest release on github
+// if the version is different, it tells the user to update
+const currentTag = version;
 async function getLatestRelease() {
   try {
     log('Checking for updates...', { err: 'info' });
-    const octokit = new Octokit();
+    const octokit = new Octokit(); //       maybe ${} instead, but it looks like it works
     const response = await octokit.request('GET /repos/{owner}/{repo}/releases/latest', {
       owner: 'riki-pedia',
       repo: 'ft-to-inv'
     });
-    const latestTag = response.data.tag_name;
+    const latestTag = response.data.tag_name.replace(/^v/, "");
     if (latestTag !== currentTag) {
-      log(`🔄 New release available: ${latestTag} (current: ${currentTag})`, { err: 'info' });
+      log(`📣 New release available: ${latestTag} (current: ${currentTag}) 📣 \n You can install it with: \`npm install -g ft-to-inv@${latestTag}\``, { err: 'info' });
       return latestTag;
     } else {
       log(`✅ You are running the latest release: ${currentTag}`, { err: 'info' });
@@ -368,21 +378,13 @@ async function getLatestRelease() {
   }
 
 }
-// i thought about self-updating but that seems like a bad idea
-async function maybeUpdate() {
-  const latest = await getLatestRelease();
-  if (latest && latest !== currentTag) {
-    log(`📣 A new version (${latest}) is available! Please update from ${currentTag} to the latest version.`, { err: 'info' });
-    log(` You can install it with: \`npm install -g ft-to-inv@${latest}\``, { err: 'info' });
-}
-}
 //#endregion
-//#region main
+//#region main fts
 // Main function to run the export and sync process
 export async function main(overrides = {}) {
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
-  await maybeUpdate();
+  await getLatestRelease();
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
   const ENV_CONFIG_PATH = normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG', 'FT_TO_INV_CONFIG_PATH', 'FT_INV_CONFIG', 'CONFIG']));
   // we parse configPath in config.js, but this gets used for checking if it's the first run
@@ -404,7 +406,8 @@ export async function main(overrides = {}) {
     config = loadConfig(configPath);
   }
   await setConfig(config);
-  
+  //#endregion
+  //#region plugins and marketplace
    PLUGINS = await resolveConfig('plugins', {
     cliNames: ['--plugins', '-p'],
     envNames: ['FT_TO_INV_CONFIG_PLUGINS', 'PLUGINS', 'FT_TO_INV_PLUGINS'],
@@ -477,10 +480,15 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   // exit early to prevent trying to sync with no files or config
   return
 }
+//#endregion
+//#region load/merge config and args
+  // sphagetti code isnt that far off of what this is
+  // but it works so whatever
+  // this section:
   // Load/merge CLI args + config file
   // Detect first-run (no config file or no prior export)
   // Assign globals from config
-  EXPORT_DIR = await resolveConfig('export_dir', {
+  const baseExportDir = await resolveConfig('export_dir', {
     cliNames: ['--export-dir', '-e'], 
     envNames: ['FT_TO_INV_CONFIG_EXPORT_DIR', 'EXPORT_DIR', 'FT_TO_INV_EXPORT_DIR'],
     config: config,
@@ -489,7 +497,8 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     positionalArgs: ['export-dir', 'export']
   }
   )
-  FREETUBE_DIR = await resolveConfig('freetube_dir', {
+  EXPORT_DIR = await sanitizePath(baseExportDir);
+  const baseFtDir = await resolveConfig('freetube_dir', {
       cliNames: ['--freetube-dir', '-f', '-cd'],
       envNames: ['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'],
       config: config,
@@ -498,11 +507,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
       positionalArgs: ['freetube-dir', 'freetube']
     }
   )
-  // these files are always those names, not taking args for them
-  // if theyre different make a symlink ig
-  PROFILE_PATH = join(FREETUBE_DIR, 'profiles.db');
-  HISTORY_PATH = join(FREETUBE_DIR, 'history.db');
-  PLAYLIST_PATH = join(FREETUBE_DIR, 'playlists.db');
+  FREETUBE_DIR = await sanitizePath(baseFtDir);
   // this looks trash, if you can make this better please do
   TOKEN = await resolveConfig('token', {
     cliNames: ['--token', '-t'],
@@ -933,28 +938,32 @@ Aliases:
       return;
     }
     //#endregion
- if (!overrides || Object.keys(overrides).length === 0) {
-  sanitize({
-    token: TOKEN,
-    instance: INSTANCE,
-    export_dir: EXPORT_DIR,
-    freetube_dir: FREETUBE_DIR,
-    cron: CRON_SCHEDULE
-   },
-   {
-    token: true,
-    instance: true,
-    export_dir: true,
-    freetube_dir: true,
-    cron: true
-   })} else {
-    log(`Bypassing sanitization due to passing in overrides to main.`, { err: 'warning' });
-   }
-   if (!overrides || Object.keys(overrides).length === 0) {
-     await isExpectedArg(args);
-   } else {
-    log(`Bypassing argument checks due to passing in overrides to main.`, { err: 'warning' });
-   }
+    //#region validation
+if (!overrides || Object.keys(overrides).length === 0) {
+  try {
+    config = await sanitizeConfig({
+      token: TOKEN,
+      instance: INSTANCE,
+      export_dir: EXPORT_DIR,
+      freetube_dir: FREETUBE_DIR,
+      cron_schedule: CRON_SCHEDULE
+    });
+  } catch (err) {
+    log(`❌ ${err.message}`, { err: "error" });
+    process.exit(1);
+  }
+
+  await isExpectedArg(args);
+
+} else {
+  log("⚠️ Bypassing sanitization and argument checks (overrides present)", { err: "warning" });
+  config = overrides; // trust caller to pass in already-clean values
+}
+  // these files are always those names, not taking args for them
+  // if theyre different make a symlink ig
+  PROFILE_PATH = join(FREETUBE_DIR, 'profiles.db');
+  HISTORY_PATH = join(FREETUBE_DIR, 'history.db');
+  PLAYLIST_PATH = join(FREETUBE_DIR, 'playlists.db');
   if (QUIET && VERBOSE) {
     log('❌ Conflicting options: --quiet and --verbose', { err: 'error' });
     process.exit(1);
@@ -997,6 +1006,7 @@ function certErrorHint(err) {
       else return;
     }
 // === sync logic ===
+//#endregion
 //#region sync
 export async function sync() {
     
@@ -1047,6 +1057,7 @@ export async function sync() {
       },
       playlists
     };
+    //#region diffs
     let historyjson, playlistsjson, subscriptionsjson;
     if (HISTORY) {
       log('Ignoring history due to passing ignore history in');
@@ -1124,7 +1135,8 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
      prettyRemovedSubs.push(`- ${channelInfo} (${channel})`);
    }
   }
-
+   //#endregion
+   //#region dry run
    const newH = newHistory.length ? `${newHistory.length} video${useSVideo}` : '0 videos';
    const newS = newSubs.length ? `${newSubs.length} subscription${useSSub}` : '0 subscriptions';
    const newP = newPlaylists.length ? `${newPlaylists.length} playlist${useSPlaylist}` : '0 playlists';
@@ -1209,6 +1221,8 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
       log(`❌ ${label}: ${error.message || error}`, { err: 'error' });
       certErrorHint(error);
     };
+    //#endregion
+    //#region api sync
     if (!NOSYNC) {
       if (newSubs.length === 0 && newHistory.length === 0 && newPlaylists.length === 0 && removedHistory.length === 0 && removedSubs.length === 0 && removedPlaylists.length === 0) {
         log('ℹ️ No changes to sync, not updating Invidious or export files',{ err: 'info' });
@@ -1363,6 +1377,7 @@ let removedHisCnt = 0;
 await runHook('afterSync', { data: newData });
 }
 //#endregion
+//#region call main and schedule
 // Kick off
 const modulePath = realpathSync(fileURLToPath(import.meta.url));
 const entryPath = realpathSync(resolve(process.argv[1] || ""));

@@ -1,88 +1,52 @@
-// script to sanitize user input
-// handles any string that is passed by the user, with an object to track what is being sanitized so it can choose a method
-// too many helpers help pls
-// thats 6
-import { log, logConsoleOutput } from './logs.js'
-import path from 'path'
-import cron from 'node-cron'
-/**
- * 
- * @param {object} input - an object of vars you want sanitized
- *                       - example object: { token: 'abc123', instance: 'https://example.com' }
- * @param {object} options - an object containing options for sanitization, just tracks what is being sanitized
- */
-export async function sanitize(input, {
-    token= false,
-    instance= false,
-    export_dir= false,
-    freetube_dir= false,
-    cron_schedule= false
+// sanitize.js
+import path from "path";
+import cron from "node-cron";
+import { logConsoleOutput } from "./logs.js";
+
+// Token
+function sanitizeToken(token) {
+  if (typeof token !== "string") throw new Error("Invalid token: must be a string");
+  if (token.length < 42) throw new Error("Invalid token: too short");
+  if (!token.includes("=")) throw new Error("Invalid token: missing '='");
+  if (token.includes(" ")) throw new Error("Invalid token: contains spaces");
+  return token;
 }
-) {
-    if (token) {
-        // sanitize token
-        if (typeof input.token !== 'string') {
-            log('Invalid token', { err: 'error' });
-            process.exit(1);
-        }
-        if (input.token.length < 42) {
-            log('Token too short', { err: 'error' });
-            process.exit(1);
-        }
-        if (!input.token.includes('=')) {
-            log('Invalid token format', { err: 'error' });
-            process.exit(1);
-        }
-        if (input.token.includes(' ')) {
-            log('Invalid token format', { err: 'error' });
-            process.exit(1);
-        }
-    }
-    if (instance) {
-        // sanitize instance URL
-        if (typeof input.instance !== 'string') {
-            log('Invalid instance URL', { err: 'error' });
-            process.exit(1);
-        }
-        if (input.instance.includes(' ')) {
-            log('Invalid instance URL: contains spaces', { err: 'error' });
-            process.exit(1);
-        }
-        const regex = /^https?:\/\/[^/]+/;
-        if (!regex.test(input.instance)) {
-            log('Invalid instance URL format. It must start with http:// or https://', { err: 'error' });
-            process.exit(1);
-        }
-    }
-    if (export_dir) {
-        // sanitize export directory
-        if (typeof input.export_dir !== 'string') {
-            log('Invalid export directory', { err: 'error' });
-            process.exit(1);
-        }
-        input.export_dir = path.resolve(input.export_dir);
-    }
-    if (freetube_dir) {
-        // sanitize freetube directory
-        if (typeof input.freetube_dir !== 'string') {
-            log('Invalid freetube directory', { err: 'error' });
-            process.exit(1);
-        }
-        input.freetube_dir = path.resolve(input.freetube_dir);
-    }
-    if (cron_schedule) {
-        // sanitize cron schedule
-        if (typeof input.cron_schedule !== 'string') {
-            log('Invalid cron schedule', { err: 'error' });
-            process.exit(1);
-        }
-        try {
-            cron.validate(input.cron_schedule);
-        } catch (err) {
-            log('Invalid cron schedule format. The error was: ' + err.message || err, { err: 'error' });
-            process.exit(1);
-        }
-    }
-  return log('Input good!', { color: 'green'})
+
+// Instance URL
+function sanitizeInstance(instance) {
+  if (typeof instance !== "string") throw new Error("Invalid instance: must be a string");
+  if (instance.includes(" ")) throw new Error("Invalid instance: contains spaces");
+  const regex = /^https?:\/\/[^/]+$/;
+  if (!regex.test(instance)) throw new Error("Invalid instance: must start with http(s):// and no path\n tip: you might have a trailing slash");
+  return instance;
 }
-logConsoleOutput(); // write logs to file
+
+// Paths
+// all the other functions throw if invalid, so this is the only one that needs to be exported
+export async function sanitizePath(p) {
+  if (typeof p !== "string") throw new Error("Invalid path: must be a string");
+  return path.resolve(p.replace(/\\/g, "/"));
+}
+
+// Cron
+function sanitizeCron(cronExpr) {
+  if (typeof cronExpr !== "string") throw new Error("Invalid cron: must be a string");
+  if (cronExpr === "" || cronExpr === " " ) return ""; // allow empty cron to disable scheduling
+  if (!cron.validate(cronExpr)) throw new Error("Invalid cron: failed validation");
+  return cronExpr;
+}
+
+// Main
+export async function sanitizeConfig(input) {
+  const output = { ...input }; // shallow copy
+
+  if ("token" in input) output.token = sanitizeToken(input.token);
+  if ("instance" in input) output.instance = sanitizeInstance(input.instance);
+  if ("export_dir" in input) output.export_dir = sanitizePath(input.export_dir);
+  if ("freetube_dir" in input) output.freetube_dir = sanitizePath(input.freetube_dir);
+  if ("cron_schedule" in input) output.cron_schedule = sanitizeCron(input.cron_schedule);
+
+  return output;
+}
+// just logs whatever is in the console to a file
+logConsoleOutput();
