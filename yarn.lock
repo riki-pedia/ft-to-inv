@@ -50,7 +50,7 @@
     minimatch "^3.1.2"
     strip-json-comments "^3.1.1"
 
-"@eslint/js@^9.35.0", "@eslint/js@9.36.0":
+"@eslint/js@9.36.0", "@eslint/js@^9.35.0":
   version "9.36.0"
   resolved "https://registry.npmjs.org/@eslint/js/-/js-9.36.0.tgz"
   integrity sha512-uhCbYtYynH30iZErszX78U+nR3pJU3RHGQ57NXy5QupD4SBVwDeU8TNBy+MjMngc1UyIW9noKqsRqfjQTBU2dw==
@@ -99,7 +99,7 @@
     "@nodelib/fs.stat" "2.0.5"
     run-parallel "^1.1.9"
 
-"@nodelib/fs.stat@^2.0.2", "@nodelib/fs.stat@2.0.5":
+"@nodelib/fs.stat@2.0.5", "@nodelib/fs.stat@^2.0.2":
   version "2.0.5"
   resolved "https://registry.npmjs.org/@nodelib/fs.stat/-/fs.stat-2.0.5.tgz"
   integrity sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A==
@@ -184,7 +184,7 @@
     "@octokit/request-error" "^7.0.0"
     "@octokit/types" "^14.0.0"
 
-"@octokit/core@^7.0.0", "@octokit/core@^7.0.2", "@octokit/core@>=6", "@octokit/core@>=7":
+"@octokit/core@^7.0.2":
   version "7.0.4"
   resolved "https://registry.npmjs.org/@octokit/core/-/core-7.0.4.tgz"
   integrity sha512-jOT8V1Ba5BdC79sKrRWDdMT5l1R+XNHTPR6CPWzUP2EcfAcvIHZWF0eAbmRcpOOP5gVIwnqNg0C4nvh6Abc3OA==
@@ -370,7 +370,7 @@
     natural-compare "^1.4.0"
     ts-api-utils "^2.1.0"
 
-"@typescript-eslint/parser@^8.44.1", "@typescript-eslint/parser@8.44.1":
+"@typescript-eslint/parser@8.44.1":
   version "8.44.1"
   resolved "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.44.1.tgz"
   integrity sha512-EHrrEsyhOhxYt8MTg4zTF+DJMuNBzWwgvvOYNj/zm1vnaD/IC5zCXFehZv94Piqa2cRFfXrTFxIvO95L7Qc/cw==
@@ -398,7 +398,7 @@
     "@typescript-eslint/types" "8.44.1"
     "@typescript-eslint/visitor-keys" "8.44.1"
 
-"@typescript-eslint/tsconfig-utils@^8.44.1", "@typescript-eslint/tsconfig-utils@8.44.1":
+"@typescript-eslint/tsconfig-utils@8.44.1", "@typescript-eslint/tsconfig-utils@^8.44.1":
   version "8.44.1"
   resolved "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.44.1.tgz"
   integrity sha512-B5OyACouEjuIvof3o86lRMvyDsFwZm+4fBOqFHccIctYgBjqR3qT39FBYGN87khcgf0ExpdCBeGKpKRhSFTjKQ==
@@ -414,7 +414,7 @@
     debug "^4.3.4"
     ts-api-utils "^2.1.0"
 
-"@typescript-eslint/types@^8.44.1", "@typescript-eslint/types@8.44.1":
+"@typescript-eslint/types@8.44.1", "@typescript-eslint/types@^8.44.1":
   version "8.44.1"
   resolved "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.44.1.tgz"
   integrity sha512-Lk7uj7y9uQUOEguiDIDLYLJOrYHQa7oBiURYVFqIpGxclAFQ78f6VUOM8lI2XEuNOKNB7XuvM2+2cMXAoq4ALQ==
@@ -458,7 +458,7 @@ acorn-jsx@^5.3.2:
   resolved "https://registry.npmjs.org/acorn-jsx/-/acorn-jsx-5.3.2.tgz"
   integrity sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==
 
-"acorn@^6.0.0 || ^7.0.0 || ^8.0.0", acorn@^8.15.0:
+acorn@^8.15.0:
   version "8.15.0"
   resolved "https://registry.npmjs.org/acorn/-/acorn-8.15.0.tgz"
   integrity sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==
@@ -622,7 +622,7 @@ eslint-visitor-keys@^4.2.1:
   resolved "https://registry.npmjs.org/eslint-visitor-keys/-/eslint-visitor-keys-4.2.1.tgz"
   integrity sha512-Uhdk5sfqcee/9H/rCOJikYz67o0a2Tw2hGRPOG2Y1R2dg7brRe1uG0yaNQDHu+TO/uQPF/5eCapvYSmHUjt7JQ==
 
-"eslint@^6.0.0 || ^7.0.0 || >=8.0.0", "eslint@^8.57.0 || ^9.0.0", eslint@^9.35.0:
+eslint@^9.35.0:
   version "9.36.0"
   resolved "https://registry.npmjs.org/eslint/-/eslint-9.36.0.tgz"
   integrity sha512-hB4FIzXovouYzwzECDcUkJ4OcfOEkXTv2zRY6B9bkwjx/cprAq0uvm1nl7zvQ0/TsUk0zQiN4uPfJpB9m+rPMQ==
@@ -919,71 +919,71 @@ keyv@^4.5.4:
   dependencies:
     json-buffer "3.0.1"
 
-lefthook-darwin-arm64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-darwin-arm64/-/lefthook-darwin-arm64-1.13.4.tgz"
-  integrity sha512-A/t0OYW9NCEqJ+j3volPvetfgErveioYxTG0tzgmJoMOR4joFN0vkjahKQpKPIMQ1HSqFQtiRefXL3M97rCD1A==
+lefthook-darwin-arm64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-darwin-arm64/-/lefthook-darwin-arm64-1.13.5.tgz#7b56875d0aa8cdbb93814514ac299be531dffd61"
+  integrity sha512-BYt5CnAOXasVCS6i+A4ljUo9xru/B5uMFD6EWHhs3R26jGF7mBSDxM3ErzXTUaJRTP0kQI/XBmgqBryBqoqZOQ==
 
-lefthook-darwin-x64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-darwin-x64/-/lefthook-darwin-x64-1.13.4.tgz"
-  integrity sha512-pBCy4pm8HEjsDSPNYv4Y4p94ZJYC7Q3KOMkYVH6no7e7ide2adetRq5eylNM7OyKF6fDA3VMv8ywINxHVKu3tg==
+lefthook-darwin-x64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-darwin-x64/-/lefthook-darwin-x64-1.13.5.tgz#2763c58ab9e97e5dd38e80bac73dbb542cf2e8d1"
+  integrity sha512-ZDtLBzvI5e26C/RZ4irOHpELTd22x9lDTgF2+eCYcnrBWOkB7800V8tuAvBybsLGvg6JwKjFxn+NTRNZnCC2hw==
 
-lefthook-freebsd-arm64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-freebsd-arm64/-/lefthook-freebsd-arm64-1.13.4.tgz"
-  integrity sha512-km8VRaIhORrebspVVwP+j01rYv2Wl8gDpEPcz42az9tfcp1o2d87Hi3zZ3DNSucSq+e7bMul1WNFYnk9xRy0jw==
+lefthook-freebsd-arm64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-freebsd-arm64/-/lefthook-freebsd-arm64-1.13.5.tgz#b03da21788e3bc38343d721b12110cd89226f370"
+  integrity sha512-uQ/kQZSSedw74aGCpsfOPN4yVt3klg8grOP6gHQOCRUMv5oK/Lj3pe1PylpTuuhxWORWRzkauPMot26J0OZZdA==
 
-lefthook-freebsd-x64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-freebsd-x64/-/lefthook-freebsd-x64-1.13.4.tgz"
-  integrity sha512-eWiFL4uFSg1XhLnbSo8dNF8K5yJ1Al3HauV1XbDfa8rUoonJfGWxOz6z22qzKj8mVkwl7Tk1hhjnAyNtXZNG8g==
+lefthook-freebsd-x64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-freebsd-x64/-/lefthook-freebsd-x64-1.13.5.tgz#490d72c252d471fe5996f4fe2d626c2c79bf1f09"
+  integrity sha512-6czek8XagVrI7ExURawkfrfX40Qjc/wktc8bLq/iXfRlmdvKDMrx2FrA82mDfEVCAEz+tTvkteK1TfR3icYF3Q==
 
-lefthook-linux-arm64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-linux-arm64/-/lefthook-linux-arm64-1.13.4.tgz"
-  integrity sha512-0aHeK1WoRPHwvgbEXdo1Q25MMCWNeY5wouhcShHpxhmrVBX1c0rYkWC9mQgR+632eUKkA/48+1J69x3mvtMZRg==
+lefthook-linux-arm64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-linux-arm64/-/lefthook-linux-arm64-1.13.5.tgz#0b5e277aed98b377c18048f8c6fca6a5896669be"
+  integrity sha512-MjWtiuW1br+rpTtgG1KGV53mSGtL5MWQwgafYzrFleJ89fKb86F4TD/4mVNzk5thmZ+HVPZw9bRZGUHFBnNJWg==
 
-lefthook-linux-x64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-linux-x64/-/lefthook-linux-x64-1.13.4.tgz"
-  integrity sha512-f0rM3o5b7HNX+eKnCZzOPPWV+uPwOgfZEIKd1MqfkxxreQ+kloAcuUcNt6huwrs8foR7+45eC31T5plII3aTnw==
+lefthook-linux-x64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-linux-x64/-/lefthook-linux-x64-1.13.5.tgz#45a327e68b419b8168c50e1149709de5b31390df"
+  integrity sha512-TIm+AYCanBR/+BVbBuIY3EMp3Z5lcJh+dovB52gHiuUjiauAptFXvntezyR5wAbyptLpYsb4WDmpSR8O2eln+w==
 
-lefthook-openbsd-arm64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-openbsd-arm64/-/lefthook-openbsd-arm64-1.13.4.tgz"
-  integrity sha512-ov9rjWPOtphlNG2SOPQAPBSeWVTfB/vbh5AcvPECnVVe9jZTCthhKIyr9wx/UfKKqGxlL4wi7jk7BQ1BEJuC5w==
+lefthook-openbsd-arm64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-openbsd-arm64/-/lefthook-openbsd-arm64-1.13.5.tgz#57f5540afa934b6c22bddb2441ea15f69d86b855"
+  integrity sha512-lYXrWf0/hBrwtG8ceaHq886bcqRKh3Lfv+jZJs+ykMLB6L/kaqk8tA4V2NHWydQ5h56o45ugs/580nMz36ZdRg==
 
-lefthook-openbsd-x64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-openbsd-x64/-/lefthook-openbsd-x64-1.13.4.tgz"
-  integrity sha512-4TVuVG86fJhWGBx8nR+USq00lYHuzLp1PqrW3vDKmTwxlMf3gmquO6PyQ85I5jfr1G2QpKn/cVJCvj3ExMUOxg==
+lefthook-openbsd-x64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-openbsd-x64/-/lefthook-openbsd-x64-1.13.5.tgz#9c6928400c6ac5ea86f569c44ac25f383153c6a7"
+  integrity sha512-Ba1JrsRbfan4WKd8Q7gUhTxCUuppXzirDObd3JxpLRSLxA47yxhjMv7KByDunRDTvzTgsXoykZI6mPupkc1JiQ==
 
-lefthook-windows-arm64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-windows-arm64/-/lefthook-windows-arm64-1.13.4.tgz"
-  integrity sha512-y46ZgRAgyMy5MQYkZoSBtHYUYj0+54cM0VDT/Lu/jz1GRFAE8JkrRVetk3geqECpnMGxBkSgfhcbGDYeEvJQdw==
+lefthook-windows-arm64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-windows-arm64/-/lefthook-windows-arm64-1.13.5.tgz#40634f5475e5962ee5590de997e751b45b55f975"
+  integrity sha512-Y/CpmEIb0hlFe+kTT/efWgX6+/gUTp5NItTF+gmUrY1/G/bTLIxdIRS7WpodVM0MEN24sOrQVTSi9DN9FvGoGg==
 
-lefthook-windows-x64@1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook-windows-x64/-/lefthook-windows-x64-1.13.4.tgz"
-  integrity sha512-p2YfWuj/43gUT0nHJ6j0pTRpLLwX9n2bio60POuXOrr3RVxdv5MEaQchdRhqYG5uWj7Zsm86K9FWkNuxPG81IA==
+lefthook-windows-x64@1.13.5:
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook-windows-x64/-/lefthook-windows-x64-1.13.5.tgz#0570f5e5da06d82f7f701bef676a9fa8ecf98f0c"
+  integrity sha512-WJBqGNBlFJnunRwy12QyaDHdGULtostPqpYSZSS4boFJDY0lP5qtz9lAGmJ49aA5GQ19jrnDjGLwVPFiwIqksQ==
 
 lefthook@^1.13.4:
-  version "1.13.4"
-  resolved "https://registry.npmjs.org/lefthook/-/lefthook-1.13.4.tgz"
-  integrity sha512-4EJfkcNlZW69ISxyEuBzkyivER/XIVCJcGYTemVBf5DWlBwK97hSrbgDH8O5JuHiCR5lW83hDa1T5TW/dRfnGg==
+  version "1.13.5"
+  resolved "https://registry.yarnpkg.com/lefthook/-/lefthook-1.13.5.tgz#2c6db744d857a5356c274df3e7380e38f099a3c6"
+  integrity sha512-tpDfEviaODCNcvLohh8vKwo5dCAa6m/KX6ECsiCPYsp4H+XDATuy9S9o6G1We5MuQwz1cFAYv+LQRtWd7eoSow==
   optionalDependencies:
-    lefthook-darwin-arm64 "1.13.4"
-    lefthook-darwin-x64 "1.13.4"
-    lefthook-freebsd-arm64 "1.13.4"
-    lefthook-freebsd-x64 "1.13.4"
-    lefthook-linux-arm64 "1.13.4"
-    lefthook-linux-x64 "1.13.4"
-    lefthook-openbsd-arm64 "1.13.4"
-    lefthook-openbsd-x64 "1.13.4"
-    lefthook-windows-arm64 "1.13.4"
-    lefthook-windows-x64 "1.13.4"
+    lefthook-darwin-arm64 "1.13.5"
+    lefthook-darwin-x64 "1.13.5"
+    lefthook-freebsd-arm64 "1.13.5"
+    lefthook-freebsd-x64 "1.13.5"
+    lefthook-linux-arm64 "1.13.5"
+    lefthook-linux-x64 "1.13.5"
+    lefthook-openbsd-arm64 "1.13.5"
+    lefthook-openbsd-x64 "1.13.5"
+    lefthook-windows-arm64 "1.13.5"
+    lefthook-windows-x64 "1.13.5"
 
 levn@^0.4.1:
   version "0.4.1"
@@ -1254,11 +1254,6 @@ typescript-eslint@^8.44.0:
     "@typescript-eslint/parser" "8.44.1"
     "@typescript-eslint/typescript-estree" "8.44.1"
     "@typescript-eslint/utils" "8.44.1"
-
-typescript@>=4.8.4, "typescript@>=4.8.4 <6.0.0":
-  version "5.9.2"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-5.9.2.tgz"
-  integrity sha512-CWBzXQrc/qOkhidw1OzBTQuYRbfyxDXJMVJ1XNwUHGROVmuaeiEm3OslpZ1RV96d7SKKjZKrSJu3+t/xlw3R9A==
 
 universal-github-app-jwt@^2.2.0:
   version "2.2.2"
