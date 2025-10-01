@@ -7,7 +7,7 @@ import http from 'http';
 import { log, logConsoleOutput } from './logs.js'
 let config = {}
 const DEFAULT_HEADERS = {
-  "User-Agent": "ft-to-inv-bot/1.0 (+https://dev.riki-pedia.org/projects/ft-to-inv.html)",
+  "User-Agent": "ft-to-inv-bot/1.0 (+https://ft-to-inv-bot.riki-pedia.org/)",
   "Accept": "application/json",
 };
 // Load a newline-delimited JSON file into an array of objects

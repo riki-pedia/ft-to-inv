@@ -48,7 +48,7 @@ function loadJsonc(filePath) {
   }
 }
 const bot_headers = {
-  "User-Agent": "ft-to-inv-bot/1.0 (+https://dev.riki-pedia.org/projects/ft-to-inv.html)",
+  "User-Agent": "ft-to-inv-bot/1.0 (+https://ft-to-inv-bot.riki-pedia.org/)",
   "Accept": "application/json",
 }
 async function testToken(instance, token) {
@@ -288,8 +288,7 @@ export async function runFirstTimeSetup() {
   const exportDir = await prompt('Enter the export output directory', './');
 
   const configPath = await prompt('Where do you want to save this config file?', './ft-to-inv.jsonc');
-  
-  console.log(configPath);
+
   let verbose = await prompt('Enable verbose output? (y/n)', 'n') === 'y';
   if (!checkBoolean(verbose)) console.log('Invalid input, expected y or n, defaulting to n');
   let dryRun = await prompt('Enable dry run mode (no uploads)? (y/n)', 'n') === 'y';
