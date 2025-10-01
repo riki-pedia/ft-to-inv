@@ -98,9 +98,10 @@ export async function retryPostRequest(path, json, token, instance, insecure, me
  * @param {boolean} insecure - Whether to use HTTP instead of HTTPS (default: false), expects a boolean, usually passed by config or cli arg
  * @param {string} method - The HTTP method to use (default: 'POST').
  */
+// ill deal with this later
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function postToInvidious(path, json = {}, token, instance, insecure = false, method = 'POST') {
-  const isSecure = !insecure;
-  const client = isSecure ? https : http;
+  const client = instance.startsWith("http:") ? http : https;
   const fullPath = `${instance.replace(/\/$/, '')}/api/v1${path}`;
   const payload = JSON.stringify(json ?? {});
 

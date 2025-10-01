@@ -1,5 +1,10 @@
 // :skull a 5th helper
-// i dont actually need to import :D
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+const dirname = fileURLToPath(import.meta.url);
+import path from 'path';
+const envPath = path.join(dirname, '../../.env');
+dotenv.config({ path: envPath, quiet: true });
 // Handles both `--flag value` and `--flag=value`
 // was almost safe from the ES nonsense
 const getArg = (args, names) => {
