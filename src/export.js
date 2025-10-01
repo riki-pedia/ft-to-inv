@@ -10,13 +10,14 @@
 // when theres a huge file, sort it a little
 // add some regions
 // please.
-// THIS FILES 1300 LINES WHAT HAVE I DONE
+// THIS FILES 1400 LINES WHAT HAVE I DONE
 //#region imports and functions
 // test comment for workflow
 // i dont know why i decided to import fs and path like this
 import { existsSync, readFileSync, writeFileSync, realpathSync } from 'fs';
 import { resolve, join } from 'path';
 import { Octokit } from 'octokit';
+import ora from 'ora';
 import {
    loadConfig,
    runFirstTimeSetup,
@@ -37,7 +38,11 @@ import {
   retryPostRequest,  
 } from './utils.js';
 import { resolveConfig } from './args.js';
-// to lazy to rename all the logs back from Clog right now, this will do
+async function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+console.log("invidious is having issues right now due to recent youtube changes, the tool may not work as expected. please be patient while people find workarounds.")
+await sleep(2000);
 import { logConsoleOutput, log } from './logs.js'
 import cron from 'node-cron';
 import { clearFiles } from './clear-import-files.js';
@@ -482,7 +487,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
 }
 //#endregion
 //#region load/merge config and args
-  // sphagetti code isnt that far off of what this is
+  // spaghetti code isn't that far off of what this is
   // but it works so whatever
   // this section:
   // Load/merge CLI args + config file
@@ -630,7 +635,8 @@ runHook('duringMain', {overrides})
      positionalArgs: ['help'],
      fallback: undefined
   });
-
+//#endregion
+//#region overrides
   INSTANCE = overrides.instance || INSTANCE;
   TOKEN = overrides.token || TOKEN;
   FREETUBE_DIR = overrides.freetube_dir || FREETUBE_DIR;
@@ -1228,56 +1234,84 @@ const removedPlaylists = playlistsjson || safeOldPlaylists.filter(
         log('ℹ️ No changes to sync, not updating Invidious or export files',{ err: 'info' });
         return;
       }
+      // its really hard for me to see the seperation between these regions on vscode
+      // so we add region names
+      // "you could just add spaces"
+      // but im lazy
+      //#endregion
+      //#region new history
       let historyCount = 0;
+      const hisSummary = [];
       if (newHistory.length && !HISTORY) {
-      for (const videoId of newHistory) {
+        const spinner = ora(`Syncing history... (${historyCount}/${newHistory.length} videos)`).start();
+        for (const [i, videoId] of newHistory.entries()) {
        try {
+        if (!QUIET) {
+          const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN);
+          const prettyTitle = title || 'Unknown Title';
+          const prettyAuthor = author || 'Unknown Author';
+          const hisToAdd = `- ${prettyTitle} by ${prettyAuthor} (${videoId})`;
+          hisSummary.push(hisToAdd);
+        }
+        await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
         historyCount++;
-        log(`Video ${historyCount}/${newHistory.length}`, { err: 'info' });
-        const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN);
-        const prettyTitle = JSON.stringify(title) || 'Unknown Title';
-        const prettyAuthor = JSON.stringify(author) || 'Unknown Author';
-       const res = await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE);
-       if (!QUIET) {
-       log(`✅ Marked ${prettyTitle} by ${prettyAuthor} as watched (HTTP ${res.code})`, { err: 'info', color: 'green' });
+        spinner.text = `Syncing history... (${historyCount}/${newHistory.length} videos)`;
+        } catch (err) {
+        spinner.fail(`(${i + 1}/${newHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`);
+        await markError(`Failed to add ${videoId} to watch history`, err);
+        }
        }
-      }
-      catch (err) {
-        await markError('Failed to sync watch history', err);
-      }
-    }
-  }
+  if (newHistory.length <= 10 && !QUIET) for (const line of hisSummary) log(line, { color: 'green' });
+  else if (!QUIET) log(`✅ Added ${newHistory.length} videos to watch history (too many to log them all)`, { color: 'green' });
+  spinner.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`);
+}   
+    //#endregion
+    //#region new subs
     let subCount = 0;
+    const subSpinner = ora(`Syncing subscriptions... (${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'})`).start();
+    const subSummary = [];
+    subSummary.push('New subscriptions added:');
+    if (newSubs.length && !SUBS) {    
     for (const sub of newSubs) {
       try {
         subCount++;
-        log(`Channel ${subCount}/${newSubs.length}`, { err: 'info' });
-        const res = await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
+        subSpinner.text = `Syncing subs... (${subCount}/${newSubs.length} channels)`;
+        await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE);
         const name = await getChannelName(sub, INSTANCE);
-        if (!QUIET) {
-          log(`📺 Subscribed to ${name} (${sub}) with HTTP ${res.code}`, { color: 'green' });
-        }
+        const prettySum = `- ${name} (${sub})`;
+        subSummary.push(prettySum);
         } catch (err) {
+          subSpinner.fail(`(${subCount}/${newSubs.length}) ❌ Failed for ${sub}: ${err.message || err}`);
           await markError(`Failed to subscribe to ${sub}`, err);
       }
     }
+    subSpinner.succeed(`✅ Synced ${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'}`);
+    if (!QUIET) {
+    if (newSubs.length <= 10) for (const line of subSummary) log(line, { color: 'green' });
+    else log(`✅ Added ${newSubs.length} subscriptions (too many to log)`, { color: 'green' });
+    }}
+    //#endregion
+    //#region new playlists
     if (VERBOSE) log(`Starting playlist export...`, { err: 'info' });
- const playlistsToImport = [];
-const oldPlaylistTitles = new Set(
+  const plSummary = [];
+  plSummary.push(`You will need to import the playlists manually into Invidious. Go to your instance > Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file. The playlists are:`);
+  const plSpinner = ora(`Preparing playlist export...`).start();
+  const playlistsToImport = [];
+  plSummary.push('Playlists to import:');
+  const oldPlaylistTitles = new Set(
   (old.playlists || [])
     .filter(pl => pl && typeof pl.title === 'string' && pl.title.trim() !== '')
     .map(pl => pl.title.toLowerCase())
 );
-let plCount = 0;
-try {
-for (const pl of newPlaylists) {
-  if (!pl || typeof pl.title !== 'string') {
-    log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { err: 'warning' });
-    continue;
-  }
+  let plCount = 0;
+  try {
+    for (const pl of newPlaylists) {
+      if (!pl || typeof pl.title !== 'string') {
+        log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { err: 'warning' });
+        continue; // probably should break here but eh
+      }
   plCount++;
-  log(`Playlist ${plCount}/${newPlaylists.length}`, { err: 'info' });
-  log(`ℹ️ Found new playlist: "${pl.title}"`, { err: 'info' });
+  plSpinner.text = `Preparing playlist export... (${plCount}/${newPlaylists.length} playlists)`;
   if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
     log(`ℹ️ Skipping existing playlist: "${pl.title}"`, { err: 'info' });
     continue;
@@ -1289,10 +1323,12 @@ for (const pl of newPlaylists) {
     privacy: pl.privacy ?? 'Private',
     videos: pl.videos
   });
-  log(`🎵 Queued playlist "${pl.title}" for import, \n you will need to import it manually into Invidious. \n Head to Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file.`, { color: 'green' });
+  plSummary.push(` - "${pl.title}"`);
 
 }
-if (playlistsToImport.length > 0) {
+for (const line of plSummary) log(line, { color: 'green' });
+plSpinner.succeed(`✅ Prepared ${playlistsToImport.length} playlist${playlistsToImport.length === 1 ? '' : 's'} for import`);
+if (playlistsToImport.length > 0 && hadErrors === false) {
   const importPath = './playlist-import.json';
   writePlaylistImport(playlistsToImport, importPath);
   log(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`, { color: 'green' });
@@ -1300,43 +1336,69 @@ if (playlistsToImport.length > 0) {
   log(`✅ No new playlists to import`);
 }
 } catch (err) {
+  plSpinner.fail(`❌ Failed to prepare playlist import, ${err.message || err}`);
   await markError('Failed to prepare playlist import', err);
 }
+    //#endregion
+    //#region removed history
 let removedHisCnt = 0;
 // Remove watched videos
     if (removedHistory.length) {
-     for (const videoId of removedHistory) {
+      const rmHSpinner = ora(`Removing videos from watch history... (${removedHisCnt}/${removedHistory.length} videos)`).start();
+      const hisRmSummary = [];
+      hisRmSummary.push('Videos removed from watch history:');
+      for (const videoId of removedHistory) {
       try {
         removedHisCnt++;
-        log(`Removed video ${removedHisCnt}/${removedHistory.length}`, { err: 'info' });
-      const res = await retryPostRequest(`/auth/history/${videoId}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
-      if (!QUIET) {
-        log(`🗑️ Removed ${videoId} from watch history (HTTP ${res.code})`, { err: 'info' });
-      }
+        rmHSpinner.text = `Removing videos from watch history... (${removedHisCnt}/${removedHistory.length} videos)`;
+      await retryPostRequest(`/auth/history/${videoId}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
+      const { title, author } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN);
+      hisRmSummary.push(` - Removed "${title}" by ${author}`);
      } catch (err) {
+      rmHSpinner.fail(`(${removedHisCnt}/${removedHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`);
       await markError('Failed to remove from watch history', err);
       }
     }
+    if (!QUIET) {
+    if (removedHistory.length <= 10) for (const line of hisRmSummary) log(line);
+    else log(`✅ Removed ${removedHistory.length} videos from watch history (too many to log)`, { color: 'green' });
+    }
+    rmHSpinner.succeed(`✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`);
   }
+    //#endregion
+    //#region removed subs
   let removedSubCnt = 0;
+  const subRmSummary = [];
+  subRmSummary.push('Channels unsubscribed from:');
+  if (removedSubs.length && !SUBS) {
+  const rmSSpinner = ora(`Unsubscribing from channels... (${removedSubCnt}/${removedSubs.length} channels)`).start();
     // Unsubscribe from channels
     for (const ucid of removedSubs) {
      try {
        removedSubCnt++;
-       log(`Unsubscribed from ${ucid} (${removedSubCnt}/${removedSubs.length})`, { err: 'info' });
-      const res = await retryPostRequest(`/auth/subscriptions/${ucid}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
-      if (!QUIET) {
-       log(`👋 Unsubscribed from ${ucid} (HTTP ${res.code})`, { err: 'info' });
-      }
+      // maybe i should use the `const res = ...` block i removed here to check for 404s and stuff
+      // but ill only do that if someone complains
+      await retryPostRequest(`/auth/subscriptions/${ucid}`, null, TOKEN, INSTANCE, INSECURE, 'DELETE');
+      const name = await getChannelName(ucid, INSTANCE);
+      const prettySum = `- ${name} (${ucid})`;
+      subRmSummary.push(prettySum);
+      rmSSpinner.text = `Unsubscribing from channels... (${removedSubCnt}/${removedSubs.length} channels)`;
       } catch (err) {
+        rmSSpinner.fail(`(${removedSubCnt}/${removedSubs.length}) ❌ Failed for ${ucid}: ${err.message || err}`);
         await markError(`Failed to unsubscribe from ${ucid}`, err);
      }
     }
+    rmSSpinner.succeed(`✅ Unsubscribed from ${removedSubCnt}/${removedSubs.length} channels`);
+    for (const line of subRmSummary) log(line, { color: 'green' });
+  }
+    //#endregion
+    //#region removed playlists
   if (VERBOSE) log(`Processing removed playlists...`, { err: 'info' });
   // Remove deleted playlists from playlist-import.json
   const importPath = './playlist-import.json';
   if (removedPlaylists.length > 0 && existsSync(importPath)) {
     try {
+    log(`sorry but the way I made this logic, there won't be a nice spinner for this part`, { err: 'info' });
     const importData = JSON.parse(readFileSync(importPath, 'utf-8'));
     
     // Filter out any playlists matching removed titles (case-insensitive)
@@ -1349,7 +1411,8 @@ let removedHisCnt = 0;
   } catch (err) {
     await markError(`Failed to update ${importPath} after removals`, err);
   }
-}
+}   //#endregion
+   //#region final write 
     if (!hadErrors) {
       writeNewExport(output);
       if (!QUIET) {

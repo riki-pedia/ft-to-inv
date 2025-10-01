@@ -1,17 +1,19 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## Hotfix 1.0.7 - 2022-9-27
+## Minor Release 1.1.0 - 2025-10-01
 ### Changelog: 
-- Fix sanitation of paths on windows (hopefully)
-- Still fighting older node versions, as well as linux stuff
-open an issue if you have problems or want to request a feature
+- Added a nice loading spinner for long tasks
+- Fixed some noisy logging (kind of)
+- Support for a .env file for config (via dotenv)
+- Finally work on the README.md file
+- Test a token during first-time-setup
 <!-- im quite lazy, so i don't update the readme often. -->
 <!-- ill probably do it next release -->
 ### Install:
 ```
-npm i -g ft-to-inv@1.0.7
+npm i -g ft-to-inv@1.1.0
 ft-to-inv --first-time-setup
 ```
-<!-- i am extremely unprofessional, so youll see whatever i didnt feel like doing scattered throughout the codebase -->
+<!-- i am extremely unprofessional, so you'll see whatever i didn't feel like doing scattered throughout the codebase -->
 

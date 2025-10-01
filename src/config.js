@@ -1,9 +1,11 @@
 // fine ill make a helper
-import { readFileSync, promises, existsSync } from 'fs';
+import { readFileSync, promises, existsSync} from 'fs';
 import { join, normalize, resolve as _resolve } from 'path';
 import { createInterface } from 'readline';
 import { parse } from 'comment-json';
-
+import http from 'http';
+import https from 'https';
+import { resolveConfig } from './args.js';
 /**
  * Get the value of an environment variable.
  * @param {string} option - The name of the environment variable to retrieve.
@@ -13,8 +15,8 @@ export function getEnv(option) {
   return process.env[option] || undefined;
 }
 const DEFAULT_CONFIG_FILENAME = 'ft-to-inv.jsonc';
-
-const ENV_CONFIG_PATH = normalizePath(getEnv('FT_INV_CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG')) || normalizePath(getEnv('CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG_PATH'));
+// ignore for right now, might use later
+//const ENV_CONFIG_PATH = normalizePath(getEnv('FT_INV_CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG')) || normalizePath(getEnv('CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG_PATH'));
 
 // args parsed in export.js
 function detectOs() {
@@ -45,6 +47,47 @@ function loadJsonc(filePath) {
     return {};
   }
 }
+const bot_headers = {
+  "User-Agent": "ft-to-inv-bot/1.0 (+https://ft-to-inv-bot.riki-pedia.org/)",
+  "Accept": "application/json",
+}
+async function testToken(instance, token) {
+  try {
+    const skipVer = resolveConfig('skip_verification', {
+      cliNames: ['--skip-verification', '-skip-verification', '--skip-ver', '-skip-ver'],
+      envNames: ['SKIP_VERIFICATION', 'SKIP_VER', 'FT_INV_SKIP_VERIFICATION', 'FT_TO_INV_SKIP_VERIFICATION'],
+      isFlag: true,
+      fallback: false,
+    });
+    if (skipVer === true) return true; 
+    console.log('Testing token...');
+    const client = instance.startsWith("http:") ? http : https;
+    return new Promise((resolve, reject) => {
+      // test a known token protected endpoint, but dont care about the response, just the status code
+      const req = client.get(`${instance.replace(/\/$/, '')}/api/v1/auth/history`, {
+        headers: {
+          Cookie: `SID=${token}`,
+          ...bot_headers
+        }
+      });
+      req.on('response', res => {
+        if (res.statusCode === 200 || res.statusCode === 204) {
+          console.log('✅ Token and instance verified successfully.');
+          resolve(true);
+        } else {
+          reject(new Error(`Invalid token or instance, received status code ${res.statusCode}`));
+        }
+      });
+      req.on('error', err => {
+        console.warn(`⚠️ Failed to verify token: ${err.message}`);
+        reject(new Error(`Failed to verify token: ${err.message}`));
+      });
+    });
+  } catch (err) {
+    console.warn(`⚠️ Failed to verify token: ${err.message}`);
+    return false;
+  }
+}
 export function normalizePath(inputPath) {
   if (typeof inputPath !== 'string') return '';
   if (!inputPath) return '';
@@ -72,9 +115,9 @@ export function resolvePaths(config) {
 }
 
 function setConfigPathEnv(path) {
-  process.env.CONFIG = path;
-  console.log(`Set CONFIG environment variable to ${path}`);
-  // lowk forgot about the debug log here
+  const envToWrite = path
+  console.log(`Setting CONFIG environment variable to ${envToWrite}`);
+ promises.writeFile('.env', `CONFIG=${envToWrite}\n`, { flag: 'a' });
 }
 // checks if the prompts down below return y/n
 async function checkBoolean(prompt) {
@@ -277,11 +320,17 @@ export async function runFirstTimeSetup() {
   ...defaultConfig,
   ...config // user-specified values override defaults
 };
-
+  console.log('\nVerifying token and instance, please wait...');
+  const valid = await testToken(mergedConfig.instance, mergedConfig.token);
+  if (!valid) {
+    console.error('❌ Token verification failed. Please check your token and instance URL and try again.');
+    console.log('👉 You can bypass these checks with the --skip-verification flag');
+    process.exit(1);
+  }
   if (configPath !== './ft-to-inv.jsonc' || configPath !== normalizePath('./ft-to-inv.jsonc')) {
     setConfigPathEnv(configPath);
   }
-  const savePath = ENV_CONFIG_PATH || configPath || _resolve(DEFAULT_CONFIG_FILENAME);
+  const savePath = configPath || _resolve(DEFAULT_CONFIG_FILENAME);
   const configFileContent = renderConfigWithComments(mergedConfig, comments, topComments);
   await promises.writeFile(savePath, configFileContent);
   console.log(`✅ Config saved to ${savePath}`);
