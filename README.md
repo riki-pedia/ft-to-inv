@@ -10,6 +10,9 @@
   <br/>
   
 Takes FreeTube data and exports it to invidious-import.json, where it can be optionally imported to Invidious via the API. You can also schedule runs via the --cron flag, see below.
+## Demo
+<img alt="demo of the tool" src="https://raw.githubusercontent.com/riki-pedia/ft-to-inv/refs/heads/master/assets/demo.gif" width="600"/>
+
 ## Why?
 "FreeTube is great for local use, but it doesn’t sync across devices. Invidious does. This tool bridges the gap so your history, subscriptions, and playlists stay consistent." - albert einstein i think 
 ## Installation
