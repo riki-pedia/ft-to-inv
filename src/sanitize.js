@@ -4,8 +4,8 @@ import cron from "node-cron";
 import { logConsoleOutput } from "./logs.js";
 
 // Token
-function sanitizeToken(token) {
-  if (typeof token !== "string") throw new Error("Invalid token: must be a string");
+function sanitizeToken(token) { //                                                          debug for me
+  if (typeof token !== "string") throw new Error("Invalid token: must be a string. Got " + JSON.stringify(token));
   if (token.length < 42) throw new Error("Invalid token: too short");
   if (!token.includes("=")) throw new Error("Invalid token: missing '='");
   if (token.includes(" ")) throw new Error("Invalid token: contains spaces");

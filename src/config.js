@@ -1,11 +1,12 @@
 // fine ill make a helper
 import { readFileSync, promises, existsSync} from 'fs';
-import { join, normalize, resolve as _resolve } from 'path';
+import { join, normalize, resolve as _resolve, resolve } from 'path';
 import { createInterface } from 'readline';
 import { parse } from 'comment-json';
 import http from 'http';
 import https from 'https';
 import { resolveConfig } from './args.js';
+import { encryptToken, getPassphrase, decryptToken } from './encryption.js';
 /**
  * Get the value of an environment variable.
  * @param {string} option - The name of the environment variable to retrieve.
@@ -166,12 +167,15 @@ const comments = {
       'Warning: Be careful with these, they give full read/write access to your Invidious account',
       'You can also specify this with --token',
       'this is the only required argument, but you probably want to specify the instance too',
+      'the token here is encrypted at rest using the system keychain via keytar',
+      'if you want to change the passphrase, you can delete it from your keychain and it will prompt you again',
+      'the default passphrase is "ilikewaffles" + 8 random hex characters, you should change this',
     ],
     "instance": [
       'Accepted values: a Invidious instance URL starting with https://',
       'If you use http://, you need to use insecure mode see below', 
       'Your Invidious instance URL',
-      'Defaults to https://invidiou.s',
+      'Defaults to https://invidious.example.com (not a real instance)',
       'If you self-host Invidious with a custom TLS certificate, make sure to run with --use-system-ca.',
       'If you\'re on linux, node doesn\'t support --use-system-ca, but trusts the system store by default.',
       'Make sure to run with --use-system-ca if you get TLS errors or install the CA.',
@@ -283,6 +287,9 @@ export async function runFirstTimeSetup() {
   console.log('\n🛠 First-time setup: Let\'s configure your FreeTube → Invidious sync');
 
   const token = await prompt('Enter your Invidious token (SID cookie)');
+  const pass = await getPassphrase();
+  const encryptedToken = encryptToken(token, pass);
+  const decryptedToken = decryptToken(encryptedToken, pass);
   const instance = await prompt('Enter the Invidious instance URL', 'https://invidious.example.com');
   const ftDir = await prompt('Enter your FreeTube data directory', getDefaultFreeTubeDir());
   const exportDir = await prompt('Enter the export output directory', './');
@@ -305,7 +312,7 @@ export async function runFirstTimeSetup() {
   detectHttps(instance)
 
   const config = {
-    "token": token,
+    "token": encryptedToken,
     "instance": instance,
     "freetube_dir": ftDirNormalized,
     "export_dir": exportDirNormalized,
@@ -321,13 +328,13 @@ export async function runFirstTimeSetup() {
   ...config // user-specified values override defaults
 };
   console.log('\nVerifying token and instance, please wait...');
-  const valid = await testToken(mergedConfig.instance, mergedConfig.token);
+  const valid = await testToken(mergedConfig.instance, decryptedToken);
   if (!valid) {
     console.error('❌ Token verification failed. Please check your token and instance URL and try again.');
     console.log('👉 You can bypass these checks with the --skip-verification flag');
     process.exit(1);
   }
-  if (configPath !== './ft-to-inv.jsonc' || configPath !== normalizePath('./ft-to-inv.jsonc')) {
+  if (configPath !== './ft-to-inv.jsonc' || configPath !== normalizePath('./ft-to-inv.jsonc') || configPath !== resolve('./ft-to-inv.jsonc')) {
     setConfigPathEnv(configPath);
   }
   const savePath = configPath || _resolve(DEFAULT_CONFIG_FILENAME);

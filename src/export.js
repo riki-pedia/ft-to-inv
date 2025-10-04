@@ -56,6 +56,7 @@ import {
   installPlugin,
   removePlugin
 } from './marketplace.js'
+import { decryptToken, getPassphrase} from './encryption.js';
 import { fileURLToPath } from "url";
 const args = process.argv.slice(2);
 
@@ -248,7 +249,14 @@ async function isExpectedArg(argList = args) {
 
   return true;
 }
-
+async function getToken(tokenArg) {
+  const passphrase = await getPassphrase();
+  if (tokenArg.includes(":")) {
+    return await decryptToken(tokenArg, passphrase);
+  } else {
+    return tokenArg;
+  }
+}
 const consoleOutput = []
 
 // -- Globals (to be assigned in bootstrap) --
@@ -514,13 +522,15 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
   )
   FREETUBE_DIR = await sanitizePath(baseFtDir);
   // this looks trash, if you can make this better please do
-  TOKEN = await resolveConfig('token', {
+  const baseToken = await resolveConfig('token', {
     cliNames: ['--token', '-t'],
     envNames: ['FT_TO_INV_CONFIG_TOKEN', 'FT_TO_INV_TOKEN', 'TOKEN'],
     config: config,
     args: args,
     positionalArgs: ['token', 't', 'auth']
   });
+  TOKEN = await getToken(baseToken);
+  console.log("debug " + TOKEN, baseToken);
   INSTANCE = await resolveConfig('instance', {
     cliNames: ['--instance', '-i'],
     envNames: ['FT_TO_INV_CONFIG_INSTANCE', 'INSTANCE', 'FT_TO_INV_INSTANCE'],
