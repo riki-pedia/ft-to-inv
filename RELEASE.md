@@ -1,19 +1,19 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## Minor Release 1.1.0 - 2025-10-01
+## hotfix 1.1.6 - 2025-10-04
 ### Changelog: 
-- Added a nice loading spinner for long tasks
-- Fixed some noisy logging (kind of)
-- Support for a .env file for config (via dotenv)
-- Finally work on the README.md file
-- Test a token during first-time-setup
+- Fixed: Keytar on Linux now checks for libsecret and provides a warning if not found.
+- Updated: Dependencies to their latest versions.
 <!-- im quite lazy, so i don't update the readme often. -->
 <!-- ill probably do it next release -->
 ### Install:
 ```
-npm i -g ft-to-inv@1.1.0
+npm i -g ft-to-inv@1.1.6 
 ft-to-inv --first-time-setup
 ```
+or install the same thing but on github:
+```
+npm i -g https://github.com/riki-pedia/ft-to-inv
 <!-- i am extremely unprofessional, so you'll see whatever i didn't feel like doing scattered throughout the codebase -->
 

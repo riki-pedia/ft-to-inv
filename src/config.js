@@ -20,7 +20,7 @@ const DEFAULT_CONFIG_FILENAME = 'ft-to-inv.jsonc';
 //const ENV_CONFIG_PATH = normalizePath(getEnv('FT_INV_CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG')) || normalizePath(getEnv('CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG_PATH'));
 
 // args parsed in export.js
-function detectOs() {
+export function detectOs() {
   const platform = process.platform;
   if (platform === 'win32') return 'windows';
   if (platform === 'darwin') return 'macos';

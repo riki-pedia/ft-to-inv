@@ -18,12 +18,14 @@ import { existsSync, readFileSync, writeFileSync, realpathSync } from 'fs';
 import { resolve, join } from 'path';
 import { Octokit } from 'octokit';
 import ora from 'ora';
+import semver from 'semver';
 import {
    loadConfig,
    runFirstTimeSetup,
    getDefaultFreeTubeDir,
    normalizePath,
-   prompt 
+   prompt,
+   detectOs
 } from './config.js';
 import { 
   loadNDJSON, 
@@ -38,11 +40,13 @@ import {
   retryPostRequest,  
 } from './utils.js';
 import { resolveConfig } from './args.js';
-async function sleep(ms) {
+async function sleep(s) {
+  const ms = s * 1000;
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 console.log("invidious is having issues right now due to recent youtube changes, the tool may not work as expected. please be patient while people find workarounds.")
-await sleep(2000);
+console.log("\nalso report any bugs or issues you find on github: <https://github.com/riki-pedia/ft-to-inv/issues>")
+await sleep(1.5)
 import { logConsoleOutput, log } from './logs.js'
 import cron from 'node-cron';
 import { clearFiles } from './clear-import-files.js';
@@ -250,7 +254,8 @@ async function isExpectedArg(argList = args) {
   return true;
 }
 async function getToken(tokenArg) {
-  const passphrase = await getPassphrase();
+  //                       the name is stupid but i can't think of a better one
+  const passphrase = await getPassOnAHeadlessMachine();
   if (tokenArg.includes(":")) {
     return await decryptToken(tokenArg, passphrase);
   } else {
@@ -378,7 +383,7 @@ async function getLatestRelease() {
       repo: 'ft-to-inv'
     });
     const latestTag = response.data.tag_name.replace(/^v/, "");
-    if (latestTag !== currentTag) {
+    if (semver.gt(latestTag, currentTag)) {
       log(`📣 New release available: ${latestTag} (current: ${currentTag}) 📣 \n You can install it with: \`npm install -g ft-to-inv@${latestTag}\``, { err: 'info' });
       return latestTag;
     } else {
@@ -391,6 +396,28 @@ async function getLatestRelease() {
   }
 
 }
+async function getPassOnAHeadlessMachine() {
+  // if keytar fails, we try to get the passphrase from env var
+  // ✨ programming is my passion ✨
+  const badName = resolveConfig(null, {
+    cliNames: ["--dont-use-keytar"],
+    envNames: ["FT_TO_INV_DONT_USE_KEYTAR", "DONT_USE_KEYTAR", "FT_TO_INV_CONFIG_DONT_USE_KEYTAR"],
+    args: args,
+    isFlag: true,
+  })
+  if (process.env.FT_INV_KEY && (badName === true || badName === 'true')) {
+    return process.env.FT_INV_KEY;
+  }
+  else return getPassphrase();
+}
+async function linuxWarning() {
+  // warn about keytar on linux
+  const os = detectOs();
+  if (os === 'linux') {
+    log(`⚠️ Warning: Keytar may not work properly on Linux without libsecret installed. \n try running this: \n \`sudo apt install -y libsecret-1-0\` \n if you run this in a headless machine, it could be broken.`, { err: 'warning' });
+    log(`If you want to avoid this warning, set the env var FT_TO_INV_DONT_USE_KEYTAR to true. Then set your passphrase in the env var FT_INV_KEY with \n \` export FT_INV_KEY=<your-passphrase>\``, { err: 'warning' });
+  }
+}
 //#endregion
 //#region main fts
 // Main function to run the export and sync process
@@ -398,6 +425,7 @@ export async function main(overrides = {}) {
   // get the first time setup flag at the top before it's run/skipped
   // the last two params look in the config file, so those should be blank here
   await getLatestRelease();
+  await linuxWarning();
   FIRST_TIME_SETUP = resolveFlagArg(args, ['--first-time-setup', '-fts', '--run-first-time-setup'], {}, '', ['FT_TO_INV_CONFIG_FIRST_TIME_SETUP', 'FIRST_TIME_SETUP', 'FT_TO_INV_FIRST_TIME_SETUP', 'FTS']);
   const ENV_CONFIG_PATH = normalizePath(resolveEnvVars(['FT_TO_INV_CONFIG', 'FT_TO_INV_CONFIG_PATH', 'FT_INV_CONFIG', 'CONFIG']));
   // we parse configPath in config.js, but this gets used for checking if it's the first run
@@ -420,7 +448,7 @@ export async function main(overrides = {}) {
   }
   await setConfig(config);
   //#endregion
-  //#region plugins and marketplace
+  //#region plugins, etc.,
    PLUGINS = await resolveConfig('plugins', {
     cliNames: ['--plugins', '-p'],
     envNames: ['FT_TO_INV_CONFIG_PLUGINS', 'PLUGINS', 'FT_TO_INV_PLUGINS'],
@@ -530,7 +558,7 @@ if (clearFilesFlag === true || clearConfigFlag === true) {
     positionalArgs: ['token', 't', 'auth']
   });
   TOKEN = await getToken(baseToken);
-  console.log("debug " + TOKEN, baseToken);
+  // did i seriously forget to remove the debug log :skull:
   INSTANCE = await resolveConfig('instance', {
     cliNames: ['--instance', '-i'],
     envNames: ['FT_TO_INV_CONFIG_INSTANCE', 'INSTANCE', 'FT_TO_INV_INSTANCE'],
