@@ -11,8 +11,10 @@ const ALGO = "aes-256-gcm";
 /**
  * Derive a key from the passphrase.
  */
-function getKey(passphrase) {
-  return crypto.createHash("sha256").update(passphrase).digest();
+// Secure key derivation using PBKDF2
+function getKey(passphrase, salt) {
+  // 600,000 iterations, 32-byte key length, SHA-256 digest
+  return crypto.pbkdf2Sync(passphrase, salt, 600000, 32, "sha256");
 }
 
 /**
@@ -20,12 +22,14 @@ function getKey(passphrase) {
  */
 export async function encryptToken(token, passphrase) {
   const iv = crypto.randomBytes(16);
-  const key = getKey(passphrase);
+  const salt = crypto.randomBytes(16); // New random salt
+  const key = getKey(passphrase, salt);
   const cipher = crypto.createCipheriv(ALGO, key, iv);
   let encrypted = cipher.update(token, "utf8", "hex");
   encrypted += cipher.final("hex");
   const tag = cipher.getAuthTag().toString("hex");
-  return `${iv.toString("hex")}:${tag}:${encrypted}`;
+  // Include salt in the encrypted token format
+  return `${iv.toString("hex")}:${salt.toString("hex")}:${tag}:${encrypted}`;
 }
 
 /**
@@ -33,9 +37,14 @@ export async function encryptToken(token, passphrase) {
  */
 export async function decryptToken(enc, passphrase) {
   try {
-    const [ivHex, tagHex, data] = enc.split(":");
-    const key = getKey(passphrase);
-    const decipher = crypto.createDecipheriv(ALGO, key, Buffer.from(ivHex, "hex"));
+    const parts = enc.split(":");
+    // New format expects 4 fields: iv:salt:tag:data
+    if (parts.length !== 4) throw new Error("Invalid encrypted token format");
+    const [ivHex, saltHex, tagHex, data] = parts;
+    const iv = Buffer.from(ivHex, "hex");
+    const salt = Buffer.from(saltHex, "hex");
+    const key = getKey(passphrase, salt);
+    const decipher = crypto.createDecipheriv(ALGO, key, iv);
     decipher.setAuthTag(Buffer.from(tagHex, "hex"));
     let decrypted = decipher.update(data, "hex", "utf8");
     decrypted += decipher.final("utf8");
