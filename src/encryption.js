@@ -4,6 +4,7 @@ import keytar from "keytar";
 import readline from "readline";
 import { log } from "./logs.js";
 import fs from "fs";
+import path from "path";
 
 const SERVICE = "ft-to-inv";
 const ACCOUNT = "tokenKey";
@@ -82,7 +83,7 @@ export async function getPassphrase() {
     passphrase = process.env.FT_INV_KEY;
   } else if (process.env.FT_INV_KEY_FILE) {
     try {
-      passphrase = fs.readFileSync(process.env.FT_INV_KEY_FILE, 'utf8').trim();
+      passphrase = fs.readFileSync(path.resolve(process.env.FT_INV_KEY_FILE), 'utf8').trim();
     } catch (err) {
       log(`Failed to read key file: ${err.message || err}`, { err: 'error' });
     }

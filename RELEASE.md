@@ -15,5 +15,7 @@ ft-to-inv --first-time-setup
 or install the same thing but on github:
 ```
 npm i -g https://github.com/riki-pedia/ft-to-inv
+ft-to-inv --first-time-setup
+```
 <!-- i am extremely unprofessional, so you'll see whatever i didn't feel like doing scattered throughout the codebase -->
 
