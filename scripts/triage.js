@@ -78,15 +78,16 @@ Alert:
 - Tool: ${alert.tool?.name || 'Unknown'}
 - Description: ${alert.rule?.description || 'N/A'}
 - Affected file(s) snippet: ${alert.snippet || 'N/A'}
+(Note: The snippet provided may be incomplete. Use your best judgment based on the available information. If it's not enough to make a decision, indicate that in your explanation or suggest human review.)
 
 Classify:
-1. classification = true_positive | false_positive | linter_error
+1. classification = true_positive | false_positive | linter_error | human_review_needed
 2. confidence = number 0-100
 3. explanation = text
 4. Suggested fix (if true_positive)
 
 Respond STRICTLY to this JSON schema:
-{ "classification": "true_positive | false_positive | linter_error", "confidence": 0-100, "explanation": " a breif explanation on the previous reasoning", "suggested_fix": "what to do in order to fix the issue. please watch quotes in this section. if you don't have a fix, you can just leave this blank." }
+{ "classification": "true_positive | false_positive | linter_error | human_review_needed", "confidence": 0-100, "explanation": " a breif explanation on the previous reasoning", "suggested_fix": "what to do in order to fix the issue. please watch quotes in this section. if you don't have a fix, you can just leave this blank." }
 `
 
   const res = await ollama.chat({
@@ -115,9 +116,12 @@ async function main() {
   const repo = 'ft-to-inv'
 
   // fetch alerts
+  // temporary
+  const prRef = 'refs/pull/31/head'
   const advs = await octokit.rest.codeScanning.listAlertsForRepo({
     owner,
     repo,
+    ref: prRef,
   })
 
   const results = []

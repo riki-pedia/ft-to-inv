@@ -33,7 +33,8 @@
   "scripts": {
     "test": "node ./src/export.js",
     "release": "node ./scripts/release.js",
-    "triage": "node ./scripts/triage.js"
+    "triage": "node ./scripts/triage.js",
+    "comment": "node ./scripts/commentOnPr.js"
   },
   "bin": {
     "ft-to-inv": "src/export.js"
