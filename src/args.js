@@ -1,10 +1,10 @@
 // :skull a 5th helper
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-const dirname = fileURLToPath(import.meta.url);
-import path from 'path';
-const envPath = path.join(dirname, '../../.env');
-dotenv.config({ path: envPath, quiet: true });
+import dotenv from 'dotenv'
+import { fileURLToPath } from 'url'
+const dirname = fileURLToPath(import.meta.url)
+import path from 'path'
+const envPath = path.join(dirname, '../../.env')
+dotenv.config({ path: envPath, quiet: true })
 // Handles both `--flag value` and `--flag=value`
 // was almost safe from the ES nonsense
 const getArg = (args, names) => {
@@ -14,30 +14,30 @@ const getArg = (args, names) => {
     // is it smart? probably not
     // does it work? yes
     // is it worth the effort to make it smarter? no
-    const index = args.findIndex(arg => arg === name || arg.startsWith(name + '='));
+    const index = args.findIndex(arg => arg === name || arg.startsWith(name + '='))
     if (name === '--cron' || name === '-cron' || name === '--cron-schedule') {
-     const cronParts = args.slice(index + 1, index + 6);
-     if (cronParts.length >= 5 && cronParts.every(p => /^(\*|\d+)$/.test(p))) {
-       return cronParts.join(' ');
-     }
+      const cronParts = args.slice(index + 1, index + 6)
+      if (cronParts.length >= 5 && cronParts.every(p => /^(\*|\d+)$/.test(p))) {
+        return cronParts.join(' ')
+      }
     }
     if (index !== -1) {
-      const split = args[index].split('=');
-      if (split.length > 1) return split[1];
-      return args[index + 1];
+      const split = args[index].split('=')
+      if (split.length > 1) return split[1]
+      return args[index + 1]
     }
   }
-  return undefined;
+  return undefined
 }
 function resolveEnvVars(names) {
   for (const key of names) {
-    if (process.env[key] !== undefined) return process.env[key];
+    if (process.env[key] !== undefined) return process.env[key]
   }
-  return undefined;
+  return undefined
 }
 // isFlag means its either true or false
 /**
- * 
+ *
  * @param {string} key - config key name
  * @param {Object} options - options object
  *         - cliNames: array of CLI argument names (e.g., ['--flag', '-f'])
@@ -58,43 +58,41 @@ export async function resolveConfig(
     args = [],
     fallback = undefined,
     isFlag = false,
-    positionalArgs = [] 
+    positionalArgs = [],
   }
 ) {
   if (isFlag) {
     // 1. CLI flags (--foo, -f)
-    if (cliNames.some(flag => args.includes(flag))) return true;
+    if (cliNames.some(flag => args.includes(flag))) return true
     // 2. Positional flags (like "verbose" or ["verbose","v"])
     for (const alias of positionalArgs) {
-      if (args.includes(alias)) return true;
+      if (args.includes(alias)) return true
     }
     // 3. Env
-    const envVal = resolveEnvVars(envNames);
-    if (envVal !== undefined) return envVal === 'true';
+    const envVal = resolveEnvVars(envNames)
+    if (envVal !== undefined) return envVal === 'true'
     // 4. Config
-    // ignore linter, looks really dumb when you type it out. 
+    // ignore linter, looks really dumb when you type it out.
     // eslint-disable-next-line no-prototype-builtins
-    if (config.hasOwnProperty(key)) return config[key] === true;
-    return false;
+    if (config.hasOwnProperty(key)) return config[key] === true
+    return false
   } else {
     // 1. CLI value args (--foo=bar, --foo bar, etc.)
-    const cliVal = getArg(args, cliNames);
-    if (cliVal !== undefined) return cliVal;
+    const cliVal = getArg(args, cliNames)
+    if (cliVal !== undefined) return cliVal
     // 2. Positional value args
     for (const alias of positionalArgs) {
-      const idx = args.indexOf(alias);
+      const idx = args.indexOf(alias)
       if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith('-')) {
-        return args[idx + 1];
+        return args[idx + 1]
       }
     }
     // 3. Env
-    const envVal = resolveEnvVars(envNames);
-    if (envVal !== undefined) return envVal;
+    const envVal = resolveEnvVars(envNames)
+    if (envVal !== undefined) return envVal
     // 4. Config
     // eslint-disable-next-line no-prototype-builtins
-    if (config.hasOwnProperty(key)) return config[key];
-    return fallback;
+    if (config.hasOwnProperty(key)) return config[key]
+    return fallback
   }
 }
-
-
