@@ -5,6 +5,8 @@
 ### Changelog: 
 - Fixed: Keytar on Linux now checks for libsecret and provides a warning if not found.
 - Updated: Dependencies to their latest versions.
+- fix quiet mode not working when set in config file.
+- add to some internal tools
 <!-- im quite lazy, so i don't update the readme often. -->
 <!-- ill probably do it next release -->
 ### Install:
