@@ -520,7 +520,7 @@ export async function main(overrides = {}) {
   // the last two params look in the config file, so those should be blank here
   await getLatestRelease()
   await linuxWarning()
-  // this NEEDS to run before first time setup so if the pass is too short they wont be stuck in a crash loop like i was while testing with passphrases "h"
+  // this NEEDS to run before first time setup so if the pass is too short they wont be stuck in a crash loop like i was while testing with passphrase "h"
   CHANGE = await resolveConfig(null, {
     cliNames: ['--change-passphrase', '--change-pass'],
     envNames: [
@@ -1452,10 +1452,12 @@ export async function sync() {
     //#region new history
     let historyCount = 0
     const hisSummary = []
+    let spinner
     if (newHistory.length && !HISTORY) {
-      const spinner = ora(
-        `Syncing history... (${historyCount}/${newHistory.length} videos)`
-      ).start()
+      if (!QUIET) {
+        // this looks like a false positive, but this is used as long as not QUIET
+        spinner = ora(`Syncing history... (${historyCount}/${newHistory.length} videos)`).start()
+      }
       for (const [i, videoId] of newHistory.entries()) {
         try {
           if (!QUIET) {
@@ -1467,11 +1469,15 @@ export async function sync() {
           }
           await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE)
           historyCount++
-          spinner.text = `Syncing history... (${historyCount}/${newHistory.length} videos)`
+          if (!QUIET && spinner) {
+            spinner.text = `Syncing history... (${historyCount}/${newHistory.length} videos)`
+          }
         } catch (err) {
-          spinner.fail(
-            `(${i + 1}/${newHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`
-          )
+          if (!QUIET) {
+            spinner?.fail(
+              `(${i + 1}/${newHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`
+            )
+          }
           await markError(`Failed to add ${videoId} to watch history`, err)
         }
       }
@@ -1481,35 +1487,45 @@ export async function sync() {
         log(`✅ Added ${newHistory.length} videos to watch history (too many to log them all)`, {
           color: 'green',
         })
-      spinner.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
+      spinner?.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
     }
     //#endregion
     //#region new subs
     let subCount = 0
-    const subSpinner = ora(
-      `Syncing subscriptions... (${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'})`
-    ).start()
+    let subSpinner
+    if (!QUIET) {
+      subSpinner = ora(
+        `Syncing subscriptions... (${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'})`
+      ).start()
+    }
     const subSummary = []
     subSummary.push('New subscriptions added:')
     if (newSubs.length && !SUBS) {
       for (const sub of newSubs) {
         try {
-          subCount++
-          subSpinner.text = `Syncing subs... (${subCount}/${newSubs.length} channels)`
+          // im just fighting node at this point
+          if (!QUIET && subSpinner) {
+            subCount++
+            subSpinner.text = `Syncing subs... (${subCount}/${newSubs.length} channels)`
+            const name = await getChannelName(sub, INSTANCE)
+            const prettySum = `- ${name} (${sub})`
+            subSummary.push(prettySum)
+          }
           await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE)
-          const name = await getChannelName(sub, INSTANCE)
-          const prettySum = `- ${name} (${sub})`
-          subSummary.push(prettySum)
         } catch (err) {
-          subSpinner.fail(
-            `(${subCount}/${newSubs.length}) ❌ Failed for ${sub}: ${err.message || err}`
-          )
+          if (!QUIET) {
+            subSpinner?.fail(
+              `(${subCount}/${newSubs.length}) ❌ Failed for ${sub}: ${err.message || err}`
+            )
+          }
           await markError(`Failed to subscribe to ${sub}`, err)
         }
       }
-      subSpinner.succeed(
-        `✅ Synced ${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'}`
-      )
+      if (!QUIET) {
+        subSpinner?.succeed(
+          `✅ Synced ${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'}`
+        )
+      }
       if (!QUIET) {
         if (newSubs.length <= 10) for (const line of subSummary) log(line, { color: 'green' })
         else log(`✅ Added ${newSubs.length} subscriptions (too many to log)`, { color: 'green' })
@@ -1519,10 +1535,13 @@ export async function sync() {
     //#region new playlists
     if (VERBOSE) log(`Starting playlist export...`, { err: 'info' })
     const plSummary = []
-    plSummary.push(
-      `You will need to import the playlists manually into Invidious. Go to your instance > Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file. The playlists are:`
-    )
-    const plSpinner = ora(`Preparing playlist export...`).start()
+    let plSpinner
+    if (!QUIET) {
+      plSummary.push(
+        `You will need to import the playlists manually into Invidious. Go to your instance > Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file. The playlists are:`
+      )
+      plSpinner = ora(`Preparing playlist export...`).start()
+    }
     const playlistsToImport = []
     plSummary.push('Playlists to import:')
     const oldPlaylistTitles = new Set(
@@ -1537,8 +1556,10 @@ export async function sync() {
           log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { err: 'warning' })
           continue // probably should break here but eh
         }
-        plCount++
-        plSpinner.text = `Preparing playlist export... (${plCount}/${newPlaylists.length} playlists)`
+        if (!QUIET && plSpinner) {
+          plCount++
+          plSpinner.text = `Preparing playlist export... (${plCount}/${newPlaylists.length} playlists)`
+        }
         if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
           log(`ℹ️ Skipping existing playlist: "${pl.title}"`, { err: 'info' })
           continue
@@ -1552,35 +1573,56 @@ export async function sync() {
         })
         plSummary.push(` - "${pl.title}"`)
       }
-      for (const line of plSummary) log(line, { color: 'green' })
-      plSpinner.succeed(
-        `✅ Prepared ${playlistsToImport.length} playlist${playlistsToImport.length === 1 ? '' : 's'} for import`
-      )
+      if (!QUIET && plSpinner) {
+        for (const line of plSummary) log(line, { color: 'green' })
+        // if theres somebody reading over these, im doing it this way for a few reasons
+        // 1. consistency with the other spinners
+        // 2. i dont want to have to refactor the whole function to async/await just for this one part
+        // 3. its easier to read this way imo
+        // 4. this is all for quiet mode, its not a big enough deal to warrant a full refactor
+        plSpinner.succeed(
+          `✅ Prepared ${playlistsToImport.length} playlist${playlistsToImport.length === 1 ? '' : 's'} for import`
+        )
+      }
       if (playlistsToImport.length > 0 && hadErrors === false) {
         const importPath = './playlist-import.json'
         writePlaylistImport(playlistsToImport, importPath)
-        log(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`, { color: 'green' })
+        if (!QUIET) {
+          log(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`, { color: 'green' })
+        }
+        log(
+          `playlist export complete. import the playlist-import.json file into your Invidious instance to finish the process.`
+        )
       } else {
-        log(`✅ No new playlists to import`)
+        if (!QUIET) {
+          log(`✅ No new playlists to import`)
+        }
       }
     } catch (err) {
-      plSpinner.fail(`❌ Failed to prepare playlist import, ${err.message || err}`)
+      if (!QUIET) {
+        plSpinner?.fail(`❌ Failed to prepare playlist import: ${err.message || err}`)
+      }
       await markError('Failed to prepare playlist import', err)
     }
     //#endregion
     //#region removed history
     let removedHisCnt = 0
     // Remove watched videos
+    let rmHSpinner
     if (removedHistory.length) {
-      const rmHSpinner = ora(
-        `Removing videos from watch history... (${removedHisCnt}/${removedHistory.length} videos)`
-      ).start()
+      if (!QUIET) {
+        rmHSpinner = ora(
+          `Removing videos from watch history... (${removedHisCnt}/${removedHistory.length} videos)`
+        ).start()
+      }
       const hisRmSummary = []
       hisRmSummary.push('Videos removed from watch history:')
       for (const videoId of removedHistory) {
         try {
-          removedHisCnt++
-          rmHSpinner.text = `Removing videos from watch history... (${removedHisCnt}/${removedHistory.length} videos)`
+          if (!QUIET && rmHSpinner) {
+            removedHisCnt++
+            rmHSpinner.text = `Removing videos from watch history... (${removedHisCnt}/${removedHistory.length} videos)`
+          }
           await retryPostRequest(
             `/auth/history/${videoId}`,
             null,
@@ -1592,9 +1634,12 @@ export async function sync() {
           const { title, author } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN)
           hisRmSummary.push(` - Removed "${title}" by ${author}`)
         } catch (err) {
-          rmHSpinner.fail(
-            `(${removedHisCnt}/${removedHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`
-          )
+          if (!QUIET) {
+            // when i try to do spinner?.text itll fail because of some obscure node rule, but for the others i can do it
+            rmHSpinner?.fail(
+              `(${removedHisCnt}/${removedHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`
+            )
+          }
           await markError('Failed to remove from watch history', err)
         }
       }
@@ -1605,19 +1650,26 @@ export async function sync() {
             color: 'green',
           })
       }
-      rmHSpinner.succeed(
-        `✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`
-      )
+      if (!QUIET) {
+        rmHSpinner?.succeed(
+          `✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`
+        )
+      }
     }
     //#endregion
     //#region removed subs
     let removedSubCnt = 0
     const subRmSummary = []
-    subRmSummary.push('Channels unsubscribed from:')
+    if (!QUIET) {
+      subRmSummary.push('Channels unsubscribed from:')
+    }
     if (removedSubs.length && !SUBS) {
-      const rmSSpinner = ora(
-        `Unsubscribing from channels... (${removedSubCnt}/${removedSubs.length} channels)`
-      ).start()
+      let rmSSpinner
+      if (!QUIET) {
+        rmSSpinner = ora(
+          `Unsubscribing from channels... (${removedSubCnt}/${removedSubs.length} channels)`
+        ).start()
+      }
       // Unsubscribe from channels
       for (const ucid of removedSubs) {
         try {
@@ -1632,19 +1684,25 @@ export async function sync() {
             INSECURE,
             'DELETE'
           )
-          const name = await getChannelName(ucid, INSTANCE)
-          const prettySum = `- ${name} (${ucid})`
-          subRmSummary.push(prettySum)
-          rmSSpinner.text = `Unsubscribing from channels... (${removedSubCnt}/${removedSubs.length} channels)`
+          if (!QUIET && rmSSpinner) {
+            const name = await getChannelName(ucid, INSTANCE)
+            const prettySum = `- ${name} (${ucid})`
+            subRmSummary.push(prettySum)
+            rmSSpinner.text = `Unsubscribing from channels... (${removedSubCnt}/${removedSubs.length} channels)`
+          }
         } catch (err) {
-          rmSSpinner.fail(
-            `(${removedSubCnt}/${removedSubs.length}) ❌ Failed for ${ucid}: ${err.message || err}`
-          )
+          if (!QUIET) {
+            rmSSpinner?.fail(
+              `(${removedSubCnt}/${removedSubs.length}) ❌ Failed for ${ucid}: ${err.message || err}`
+            )
+          }
           await markError(`Failed to unsubscribe from ${ucid}`, err)
         }
       }
-      rmSSpinner.succeed(`✅ Unsubscribed from ${removedSubCnt}/${removedSubs.length} channels`)
-      for (const line of subRmSummary) log(line, { color: 'green' })
+      if (!QUIET) {
+        rmSSpinner?.succeed(`✅ Unsubscribed from ${removedSubCnt}/${removedSubs.length} channels`)
+        for (const line of subRmSummary) log(line, { color: 'green' })
+      }
     }
     //#endregion
     //#region removed playlists
@@ -1664,7 +1722,9 @@ export async function sync() {
         )
 
         writeFileSync(importPath, JSON.stringify(importData, null, 2))
-        log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, { err: 'info' })
+        if (!QUIET) {
+          log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, { err: 'info' })
+        }
       } catch (err) {
         await markError(`Failed to update ${importPath} after removals`, err)
       }
@@ -1690,6 +1750,7 @@ export async function sync() {
   } else {
     if (!hadErrors) {
       noSyncWrite(output, OUTPUT_FILE, QUIET)
+      console.log("Sync complete. (no-sync mode, didn't contact Invidious API)")
     } else {
       // do this stupid log message because i dont have data from markerror
       // i know i could just pass the error message, but i want to release this sooner
