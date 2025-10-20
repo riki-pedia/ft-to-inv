@@ -173,7 +173,8 @@ const comments = {
     'You can also specify this with --token',
     'this is the only required argument, but you probably want to specify the instance too',
     'the token here is encrypted at rest using the system keychain via keytar',
-    'if you want to change the passphrase, you can delete it from your keychain and it will prompt you again',
+    // realised most ppl dont know how to delete from keychain (you know its bad when i cant remember)
+    'if you want to change the passphrase, you can run the command with --change-passphrase',
     'the default passphrase is "ilikewaffles" + 8 random hex characters, you should change this',
   ],
   instance: [
@@ -292,8 +293,9 @@ export async function runFirstTimeSetup() {
 
   const token = await prompt('Enter your Invidious token (SID cookie)')
   const pass = await getPassphrase()
-  const encryptedToken = encryptToken(token, pass)
-  const decryptedToken = decryptToken(encryptedToken, pass)
+  // these are just to test encryption/decryption, probably not necessary
+  const encryptedToken = await encryptToken(token, pass)
+  const decryptedToken = await decryptToken(encryptedToken, pass)
   const instance = await prompt('Enter the Invidious instance URL', 'https://invidious.example.com')
   const ftDir = await prompt('Enter your FreeTube data directory', getDefaultFreeTubeDir())
   const exportDir = await prompt('Enter the export output directory', './')

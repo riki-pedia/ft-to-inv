@@ -19,7 +19,7 @@ const MIN_PASSPHRASE_LENGTH = 8
 // Secure key derivation using PBKDF2
 function getKey(passphrase, salt) {
   if (typeof passphrase !== 'string' || passphrase.length < MIN_PASSPHRASE_LENGTH) {
-    throw new Error('Invalid passphrase')
+    throw new Error('Invalid passphrase, change it with the --change-pass flag.')
   }
   // 600,000 iterations, 32-byte key length, SHA-256 digest
   return crypto.pbkdf2Sync(passphrase, salt, 600000, 32, 'sha256')
@@ -107,6 +107,17 @@ export async function getPassphrase() {
   // Last resort: prompt user if not headless
   if (!process.env.CI && process.stdout.isTTY) {
     passphrase = await prompt('Enter a passphrase to secure your token: ')
+    let betterPass
+    if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+      betterPass = await prompt(
+        `Passphrase too short (min ${MIN_PASSPHRASE_LENGTH} chars). Please enter a longer one: `
+      )
+      if (betterPass.length >= MIN_PASSPHRASE_LENGTH) {
+        passphrase = betterPass
+      } else {
+        throw new Error('its still too short buddy pal')
+      }
+    }
     if (!passphrase) {
       passphrase = 'ilikewaffles' + crypto.randomBytes(8).toString('hex')
       log('⚠️  No passphrase entered, generated one automatically. You should change this later.', {
@@ -126,6 +137,21 @@ export async function getPassphrase() {
   )
 }
 
+export async function changePassphraseInKeychain() {
+  try {
+    await keytar.deletePassword(SERVICE, ACCOUNT)
+    const newPass = await prompt('Enter new passphrase: ', { type: 'password' })
+    if (newPass.length < MIN_PASSPHRASE_LENGTH) {
+      throw new Error(`New passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters long`)
+    }
+    await keytar.setPassword(SERVICE, ACCOUNT, newPass)
+    log('✅ Passphrase changed successfully in keychain.', { err: 'info' })
+  } catch (err) {
+    log(`Failed to change passphrase: ${err.message || err}`, { err: 'error' })
+    // this is dumb and i dont reccomend it, but im too lazy to refactor right now
+    throw err
+  }
+}
 /**
  * Encrypt and rewrite plaintext tokens in config.
  */

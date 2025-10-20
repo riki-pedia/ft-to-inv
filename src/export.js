@@ -60,10 +60,11 @@ const hints = JSON.parse(readFileSync(hintsPath, 'utf-8'))
 import { sanitizeConfig, sanitizePath } from './sanitize.js'
 import { loadPlugins, runHook } from './loader.js'
 import { listInstalled, listStore, installPlugin, removePlugin } from './marketplace.js'
-import { decryptToken, getPassphrase } from './encryption.js'
+import { decryptToken, getPassphrase, changePassphraseInKeychain } from './encryption.js'
 import { fileURLToPath } from 'url'
 const args = process.argv.slice(2)
-
+// im not typing the whole thing
+const changePass = changePassphraseInKeychain
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
@@ -152,6 +153,7 @@ const expectedArgs = {
   INSTALL: '--install, -ins, --add, -add',
   LIST: '--list, -list',
   MARKETPLACE: '--marketplace, -m',
+  CHANGE: '--change-passphrase, --change-pass',
 }
 // list of args that should reasonably have values, like -t <value>
 const flagsExpectingValue = [
@@ -178,6 +180,8 @@ const flagsExpectingValue = [
   '-list',
   '--marketplace',
   '-m',
+  '--change-passphrase',
+  '--change-pass',
 ]
 const validShortFlags = [
   '-t',
@@ -247,6 +251,8 @@ const posArgsExpectingValue = [
   'remove',
   'uninstall',
   'add',
+  'change',
+  'changePass',
 ]
 // gets args param from something like process.argv and checks it against expectedArgs
 // if its not expected, we exit early with an error
@@ -356,6 +362,7 @@ let PLAYLISTS, HISTORY, SUBS
 // should be global so utils can access it
 let FREETUBE_DIR
 let EXPORT_DIR
+let CHANGE
 // -- Bootstrap & main flow --
 /**
  * Resolves a boolean flag from CLI args or config file.
@@ -513,6 +520,23 @@ export async function main(overrides = {}) {
   // the last two params look in the config file, so those should be blank here
   await getLatestRelease()
   await linuxWarning()
+  // this NEEDS to run before first time setup so if the pass is too short they wont be stuck in a crash loop like i was while testing with passphrases "h"
+  CHANGE = await resolveConfig(null, {
+    cliNames: ['--change-passphrase', '--change-pass'],
+    envNames: [
+      'FT_TO_INV_CONFIG_CHANGE_PASSPHRASE',
+      'CHANGE_PASSPHRASE',
+      'FT_TO_INV_CHANGE_PASSPHRASE',
+    ],
+    config: {},
+    args: args,
+    isFlag: true,
+    positionalArgs: ['change', 'changePass'],
+  })
+  if (CHANGE === true) {
+    await changePass()
+    return
+  }
   FIRST_TIME_SETUP = resolveFlagArg(
     args,
     ['--first-time-setup', '-fts', '--run-first-time-setup'],
