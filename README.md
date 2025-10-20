@@ -18,13 +18,13 @@ Takes FreeTube data and exports it to invidious-import.json, where it can be opt
 ## Installation
 ```
 # npm
-npm i -g ft-to-inv --save-dev
+npm i -g ft-to-inv 
 
 # yarn
-yarn global add ft-to-inv --dev
+yarn global add ft-to-inv 
 
 # pnpm
-pnpm add -g ft-to-inv --save-dev
+pnpm add -g ft-to-inv
 ```
 ### Or Import (still in testing)
 ESM:
