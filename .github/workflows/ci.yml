@@ -28,6 +28,12 @@ jobs:
          npm install
          sleep 2
          npm ci
+      - name: install libsecret-1-0 and start dbus i guess
+        run: | 
+          echo "=== apt search thingy ==="
+          sudo apt update -y 
+          sudo apt install -y libsecret-1-0 dbus-x11
+          export $(dbus-launch)
       - name: Create dummy freetube files
         run: |
           mkdir -p ./dummy-ft
@@ -51,6 +57,8 @@ jobs:
           VERBOSE: true
           INSECURE: true
           DONT_RUN_SETUP: true
+          FT_TO_INV_DONT_USE_KEYTAR: true
+          FT_INV_KEY: hhfguyagfiyuawegfiyuawegiyuweagweyuagfewoyuag
           LOGS: true
         run: |
           node .github/test/mock-invidious.js &
@@ -82,7 +90,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18.x'
+        node-version: '22.x'
         cache: 'npm'
 
     - name: Run ESLint
