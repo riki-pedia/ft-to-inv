@@ -51,7 +51,8 @@
     "octokit": "^5.0.0",
     "ora": "^9.0.0",
     "semver": "^7.7.2",
-    "strip-json-comments": "^5.0.3"
+    "strip-json-comments": "^5.0.3",
+    "ft-to-inv": "^1.1.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",

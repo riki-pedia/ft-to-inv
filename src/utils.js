@@ -10,6 +10,7 @@ const DEFAULT_HEADERS = {
   'User-Agent': 'ft-to-inv-bot/1.0 (+https://ft-to-inv-bot.riki-pedia.org/)',
   Accept: 'application/json',
 }
+import { getGlobalVars } from './args.js'
 // Load a newline-delimited JSON file into an array of objects
 export async function loadNDJSON(filePath) {
   const lines = readFileSync(filePath, 'utf-8').split(/\r?\n/)
@@ -68,8 +69,6 @@ export function noSyncWrite(outputObj, outputPath, quiet) {
   writeFileSync(outputPath, json)
   if (!quiet) log(`✅ Wrote export to ${outputPath} (no-sync mode)`)
 }
-let INSTANCE = config.instance
-let TOKEN = config.token
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -85,6 +84,7 @@ export async function retryPostRequest(
   let lastError
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      // funny thing is that postToInvidious was promise based before, but i just now made it async. the await was used here ages ago, but since its promise based it didnt break anything
       return await postToInvidious(path, json, token, instance, insecure, method)
     } catch (err) {
       lastError = err
@@ -111,12 +111,13 @@ export async function retryPostRequest(
  */
 // ill deal with this later
 
-export function postToInvidious(
+export async function postToInvidious(
   path,
   json = {},
   token,
   instance,
   // this is automatically assumed now, but im keeping the param for compatibility (even though its useless now)
+  // this is mainly for my functions because at least one of them passes it (because im lazy and havent refactored it yet)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   insecure = false,
   method = 'POST'
@@ -124,7 +125,12 @@ export function postToInvidious(
   const client = instance.startsWith('http:') ? http : https
   const fullPath = `${instance.replace(/\/$/, '')}/api/v1${path}`
   const payload = JSON.stringify(json ?? {})
-
+  const argTable = await getGlobalVars()
+  const { veryVerbose } = argTable
+  if (veryVerbose)
+    log(
+      `[very-verbose] Sending request to Invidious:\n ➡️  ${method} ${fullPath} Payload: ${payload}`
+    )
   return new Promise((resolve, reject) => {
     const req = client.request(
       fullPath,
@@ -156,6 +162,26 @@ If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${ins
           ) {
             return reject(new Error(`HTTP ${res.statusCode}: ${body}`))
           }
+          if (res.statusCode === 404) {
+            const errMsg = `Endpoint not found (404). The instance ${instance} may be outdated or down.`
+            log(`⚠️ ${errMsg}`, { err: 'warning' })
+            return reject(new Error(errMsg))
+            // invidious' default behavior is to return 200 with a blank page for unknown endpoints, our tool expects 204 for success
+          } else if (res.statusCode === 200) {
+            const vv = argTable.veryVerbose
+            if (vv)
+              log(
+                `[very-verbose] Warning: Received 200 OK instead of 204 No Content. This means the endpoint isn't found because we wanted 204 for success.\n update your instance or contact the admin.\n got response: ${body.length <= 100 ? body : 'data too long to display'}`,
+                { err: 'warning' }
+              )
+            const errMsg = `Expected 204 No Content but got 200 OK. The instance ${instance} may be outdated.`
+            log(`⚠️ ${errMsg}`, { err: 'warning' })
+            return reject(new Error(errMsg))
+          }
+          if (veryVerbose)
+            log(
+              `[very-verbose] Received response: ${body.length <= 100 ? body : 'data too long to display'}, status ${res.statusCode}`
+            )
           resolve({ code: res.statusCode, body })
         })
       }
@@ -181,19 +207,19 @@ If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${ins
  * @param {string} outputPath - Where to write the file:
  * defaults to './playlist-import.json'
  */
-export function writePlaylistImport(playlists, outputPath = './playlist-import.json') {
+export async function writePlaylistImport(playlists, outputPath = './playlist-import.json') {
   const minimalImport = {
     version: 1,
     subscriptions: [],
     watch_history: [],
     preferences: {
-      default_home: 'Subscriptions',
+      default_home: 'Popular',
       annotations: false,
       autoplay: false,
       dark_mode: 'true',
       region: 'US',
       quality: 'dash',
-      player_style: 'youtube',
+      player_style: 'invidious',
       watch_history: true,
       max_results: 40,
     },
@@ -201,12 +227,21 @@ export function writePlaylistImport(playlists, outputPath = './playlist-import.j
   }
 
   writeFileSync(outputPath, JSON.stringify(minimalImport, null, 2))
-  console.log(`✅ Playlist import written to ${outputPath}`)
+  const conf = await getGlobalVars()
+  const quiet = conf.quiet || false
+  const silent = conf.silent || false
+  if (!quiet && !silent) {
+    log(`✅ Playlist import written to ${outputPath}`)
+  }
 }
 
 // Fetch channel metadata to get friendly name
-export async function getChannelName(ucid, instance = INSTANCE) {
+export async function getChannelName(ucid, instance) {
   try {
+    const argTable = await getGlobalVars()
+    const vv = argTable.veryVerbose
+    const TOKEN = argTable.token
+    if (vv) log(`[very-verbose] Fetching channel name for UCID: ${ucid}`)
     const url = new URL(`/api/v1/channels/${ucid}`, instance).href
     const res = await fetch(url, {
       headers: {
@@ -217,6 +252,11 @@ export async function getChannelName(ucid, instance = INSTANCE) {
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
+    if (vv)
+      log(
+        `[very-verbose] Received channel data: ${data.length <= 100 ? JSON.stringify(data) : 'data too long to display'}`
+      )
+    if (vv) log(`[very-verbose] Channel name for ${ucid} is ${data.author || ucid}`)
     return data.author || ucid
   } catch (err) {
     console.warn(`⚠️ Failed to get channel name for ${ucid}:`, err.message)
@@ -225,6 +265,9 @@ export async function getChannelName(ucid, instance = INSTANCE) {
 }
 export async function getVideoNameAndAuthor(vid, instance, token) {
   try {
+    const argTable = await getGlobalVars()
+    const vv = argTable.veryVerbose
+    if (vv) log(`[very-verbose] Fetching video info for VID: ${vid}`)
     const url = new URL(`/api/v1/videos/${vid}`, instance).href
     const res = await fetch(url, {
       headers: {
@@ -235,14 +278,36 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
+    if (vv)
+      log(
+        `[very-verbose] Received video data: ${data.length <= 100 ? JSON.stringify(data) : 'data too long to display'}`
+      )
+    if (vv) log(`[very-verbose] Video title for ${vid} is ${data.title || vid + '(fallback)'}`)
+    if (vv)
+      log(
+        //                                                       this is kind of dumb but whatever
+        `[very-verbose] Video author for ${vid} is ${data.author || `Unknown (got undefined)`}`
+      )
     return { author: data.author || 'Unknown', title: data.title || vid }
   } catch (err) {
-    console.warn(`⚠️ Failed to get channel name for ${vid}:`, err.message)
+    log(`⚠️ Failed to get channel name for ${vid}: ${err.message}`, { err: 'warning' })
     const errTL = err.message.toLowerCase()
     if (errTL.includes('fetch failed')) {
-      console.log('potential cert problem, see docs about --use-system-ca')
+      log('potential cert problem, see docs about --use-system-ca', { err: 'warning' })
+      const argTable = await getGlobalVars()
+      if (argTable.veryVerbose) {
+        log(
+          `[very-verbose] Try this if your cert is failing:
+           [very-verbose] Windows: set NODE_EXTRA_CA_CERTS=C:\\path\\to\\ca-bundle.crt
+           [very-verbose] macOS/Linux: export NODE_EXTRA_CA_CERTS=/path/to/ca-bundle.crt
+           [very-verbose] or set it in .bashrc/.zshrc/etc.
+           [very-verbose] TempleOS: how did you get node on here
+           [very-verbose] See https://nodejs.org/api/cli.html#--use-system-ca-certs for more info
+          `
+        )
+      }
+      return { author: 'Unknown', title: vid }
     }
-    return { author: 'Unknown', title: vid }
   }
 }
 logConsoleOutput()

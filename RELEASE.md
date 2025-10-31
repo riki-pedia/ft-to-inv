@@ -1,17 +1,21 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## hotfix 1.1.6 - 2025-10-04
+## minor release 1.2.0 - 2025-10-21
 ### Changelog: 
-- Fixed: Keytar on Linux now checks for libsecret and provides a warning if not found.
-- Updated: Dependencies to their latest versions.
-- fix quiet mode not working when set in config file.
-- add to some internal tools
+- Add silent mode to reduce console output - literally just add `--silent` to the command
+- add very-verbose mode for extra debugging info - add `--very-verbose` to the command
+- improve error handling for network requests
+- add some aliases for commands (eg: `rm` for `remove`)
+- fix a bug where plugins that need internal functions dont work (this is because they uses my package as a dependency, which i removed a while ago)
+- nice log marker `[ft-to-inv]` for better visibility in console (and to seperate from other jobs you may be running)
+- some better marking of files and functions for ppl that want to contribute or make plugins
+- change some other internal tools for better maintainability and usability
 <!-- im quite lazy, so i don't update the readme often. -->
 <!-- ill probably do it next release -->
 ### Install:
 ```
-npm i -g ft-to-inv@1.1.6 
+npm i -g ft-to-inv@1.2.0
 ft-to-inv --first-time-setup
 ```
 or install the same thing but on github:

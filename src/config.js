@@ -1,4 +1,6 @@
 // fine ill make a helper
+// note: i dont like the way VS Code offers to migrate commonjs to esm this way.
+// rl.createInterface is fine, no need for { createInterface } from 'readline'
 import { readFileSync, promises, existsSync } from 'fs'
 import { join, normalize, resolve as _resolve, resolve } from 'path'
 import { createInterface } from 'readline'
@@ -131,8 +133,13 @@ async function checkBoolean(prompt) {
   return true
 }
 // prompt
-export async function prompt(question, defaultValue = '') {
-  const rl = createInterface({ input: process.stdin, output: process.stdout })
+export async function prompt(question, defaultValue = '', password = false) {
+  let rl
+  if (password) {
+    rl = createInterface({ input: process.stdin, output: process.stdout, type: 'password' })
+  } else {
+    rl = createInterface({ input: process.stdin, output: process.stdout })
+  }
   return new Promise(resolve => {
     rl.question(`${question}${defaultValue ? ` [${defaultValue}]` : ''}: `, answer => {
       rl.close()
@@ -142,7 +149,7 @@ export async function prompt(question, defaultValue = '') {
 }
 const defaultConfig = {
   token: '',
-  instance: 'https://invidiou.s',
+  instance: 'https://invidious.example.com',
   freetube_dir: getDefaultFreeTubeDir(),
   export_dir: './',
   verbose: false,
@@ -179,7 +186,7 @@ const comments = {
   ],
   instance: [
     'Accepted values: a Invidious instance URL starting with https://',
-    'If you use http://, you need to use insecure mode see below',
+    'If you use http://, you need to use insecure mode see below. Its set automatically but you still should enable it.',
     'Your Invidious instance URL',
     'Defaults to https://invidious.example.com (not a real instance)',
     'If you self-host Invidious with a custom TLS certificate, make sure to run with --use-system-ca.',
@@ -246,8 +253,8 @@ const comments = {
   ],
   quiet: [
     'Accepted values: true or false',
-    'Suppress all non-error output?',
-    'This will hide all output from the script, including errors',
+    'Suppress info output?',
+    'This will hide most output from the script',
     'You can also specify this with --quiet, see help for aliases',
   ],
   logs: [
@@ -296,23 +303,29 @@ export async function runFirstTimeSetup() {
   // these are just to test encryption/decryption, probably not necessary
   const encryptedToken = await encryptToken(token, pass)
   const decryptedToken = await decryptToken(encryptedToken, pass)
-  const instance = await prompt('Enter the Invidious instance URL', 'https://invidious.example.com')
-  const ftDir = await prompt('Enter your FreeTube data directory', getDefaultFreeTubeDir())
-  const exportDir = await prompt('Enter the export output directory', './')
+  const instance = await prompt(
+    '[ft-to-inv] Enter the Invidious instance URL',
+    'https://invidious.example.com'
+  )
+  const ftDir = await prompt(
+    '[ft-to-inv] Enter your FreeTube data directory',
+    getDefaultFreeTubeDir()
+  )
+  const exportDir = await prompt('[ft-to-inv] Enter the export output directory', './')
 
   const configPath = await prompt(
-    'Where do you want to save this config file?',
+    '[ft-to-inv] Where do you want to save this config file?',
     './ft-to-inv.jsonc'
   )
 
-  let verbose = (await prompt('Enable verbose output? (y/n)', 'n')) === 'y'
+  let verbose = (await prompt('[ft-to-inv] Enable verbose output? (y/n)', 'n')) === 'y'
   if (!checkBoolean(verbose)) console.log('Invalid input, expected y or n, defaulting to n')
-  let dryRun = (await prompt('Enable dry run mode (no uploads)? (y/n)', 'n')) === 'y'
+  let dryRun = (await prompt('[ft-to-inv] Enable dry run mode (no uploads)? (y/n)', 'n')) === 'y'
   if (!checkBoolean(dryRun)) console.log('Invalid input, expected y or n, defaulting to n')
-  let dontShorten = (await prompt('Show full paths in logs? (y/n)', 'n')) === 'y'
+  let dontShorten = (await prompt('[ft-to-inv] Show full paths in logs? (y/n)', 'n')) === 'y'
   if (!checkBoolean(dontShorten)) console.log('Invalid input, expected y or n, defaulting to n')
 
-  let logs = (await prompt('Enable logging to a file? (y/n)', 'n')) === 'y'
+  let logs = (await prompt('[ft-to-inv] Enable logging to a file? (y/n)', 'n')) === 'y'
   if (!checkBoolean(logs)) console.log('Invalid input, expected y or n, defaulting to n')
 
   let ftDirNormalized = normalizePath(ftDir)
@@ -336,13 +349,13 @@ export async function runFirstTimeSetup() {
     ...defaultConfig,
     ...config, // user-specified values override defaults
   }
-  console.log('\nVerifying token and instance, please wait...')
+  console.log('\n[ft-to-inv] Verifying token and instance, please wait...')
   const valid = await testToken(mergedConfig.instance, decryptedToken)
   if (!valid) {
     console.error(
-      '❌ Token verification failed. Please check your token and instance URL and try again.'
+      '[ft-to-inv] ❌ Token verification failed. Please check your token and instance URL and try again.'
     )
-    console.log('👉 You can bypass these checks with the --skip-verification flag')
+    console.log('[ft-to-inv] 👉 You can bypass these checks with the --skip-verification flag')
     process.exit(1)
   }
   if (
@@ -355,9 +368,9 @@ export async function runFirstTimeSetup() {
   const savePath = configPath || _resolve(DEFAULT_CONFIG_FILENAME)
   const configFileContent = renderConfigWithComments(mergedConfig, comments, topComments)
   await promises.writeFile(savePath, configFileContent)
-  console.log(`✅ Config saved to ${savePath}`)
-  console.log('✅ Config initialized successfully.')
-  console.log('👉 Please run the command again to start syncing.')
+  console.log(`[ft-to-inv] ✅ Config saved to ${savePath}`)
+  console.log('[ft-to-inv] ✅ Config initialized successfully.')
+  console.log('[ft-to-inv] 👉 Please run the command again to start syncing.')
   process.exit(0)
   // we exit here because the globals in export.js try to set while it's writing
 }

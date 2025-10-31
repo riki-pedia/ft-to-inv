@@ -10,7 +10,7 @@
 // when theres a huge file, sort it a little
 // add some regions
 // please.
-// THIS FILES 1400 LINES WHAT HAVE I DONE
+// THIS FILES 1800 LINES WHAT HAVE I DONE
 //#region imports and functions
 // test comment for workflow
 // i dont know why i decided to import fs and path like this
@@ -40,17 +40,6 @@ import {
   retryPostRequest,
 } from './utils.js'
 import { resolveConfig } from './args.js'
-async function sleep(s) {
-  const ms = s * 1000
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-console.log(
-  'invidious is having issues right now due to recent youtube changes, the tool may not work as expected. please be patient while people find workarounds.'
-)
-console.log(
-  '\nalso report any bugs or issues you find on github: <https://github.com/riki-pedia/ft-to-inv/issues>'
-)
-await sleep(1.5)
 import { logConsoleOutput, log } from './logs.js'
 import cron from 'node-cron'
 import { clearFiles } from './clear-import-files.js'
@@ -68,8 +57,8 @@ const changePass = changePassphraseInKeychain
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
+import { setGlobalVars } from './args.js'
 
-console.log(`ft-to-inv v${version}:`)
 //#endregion
 //#region helper functions
 // cron is the only arg that should reasonably have spaces, so we handle it specially
@@ -127,6 +116,8 @@ function sanitizeEnvBoolean(value) {
   return false
 }
 /// just tracks what args we should get, then warns if there's one shouldn't be there
+//#endregion
+//#region arg validation
 const expectedArgs = {
   TOKEN: '--token, -t',
   INSTANCE: '--instance, -i',
@@ -154,6 +145,8 @@ const expectedArgs = {
   LIST: '--list, -list',
   MARKETPLACE: '--marketplace, -m',
   CHANGE: '--change-passphrase, --change-pass',
+  SILENT: '--silent',
+  VERY_VERBOSE: '--very-verbose, -vv',
 }
 // list of args that should reasonably have values, like -t <value>
 const flagsExpectingValue = [
@@ -206,6 +199,7 @@ const validShortFlags = [
   '-list',
   '-m',
   '-r',
+  '-vv',
 ]
 const validPosArgs = [
   'token',
@@ -236,6 +230,9 @@ const validPosArgs = [
   'remove',
   'uninstall',
   'add',
+  'silent',
+  'very-verbose',
+  'rm',
 ]
 const posArgsExpectingValue = [
   'token',
@@ -253,9 +250,28 @@ const posArgsExpectingValue = [
   'add',
   'change',
   'changePass',
+  'rm',
 ]
 // gets args param from something like process.argv and checks it against expectedArgs
 // if its not expected, we exit early with an error
+/**
+ * @param {string[]} argList - List of CLI arguments (e.g., from process.argv).
+ * @returns {Promise<boolean>} - Resolves to true if all arguments are expected, otherwise throws an error.
+ * A function that checks if all provided CLI arguments are expected.
+ * Example usage:
+ * ```
+ * const args = process.argv.slice(2)
+ * const isValid = await isExpectedArg(args)
+ * if (!isValid) {
+ *   console.error('Invalid arguments')
+ *   process.exit(1)
+ * }
+ * ```
+ * It checks against the list of expected arguments defined in the `expectedArgs` object.
+ * If an unexpected argument is found, it logs an error message and throws an error.
+ * Theres also PosArgs support, but its also kinda required. See above lines 250 in the code for details.
+ * wow i did a documentation!
+ */
 async function isExpectedArg(argList = args) {
   const flatExpected = Object.values(expectedArgs).flatMap(e => e.split(',').map(s => s.trim()))
 
@@ -286,7 +302,7 @@ async function isExpectedArg(argList = args) {
       const eqIndex = a.indexOf('=')
       const cleanArg = eqIndex !== -1 ? a.substring(0, eqIndex) : a
       if (!flatExpected.includes(cleanArg)) {
-        console.error(`❌ Unknown argument: ${cleanArg}`)
+        console.error(`[ft-to-inv] ❌ Unknown argument: ${cleanArg}`)
         throw new Error(`Unknown argument: ${cleanArg}`)
       }
       if (flagsExpectingValue.includes(cleanArg)) {
@@ -304,7 +320,7 @@ async function isExpectedArg(argList = args) {
         for (const sa of shortArgs) {
           const cleanArg = `-${sa}`
           if (!flatExpected.includes(cleanArg)) {
-            console.error(`❌ Unknown argument: ${cleanArg}`)
+            console.error(`[ft-to-inv] ❌ Unknown argument: ${cleanArg}`)
             process.exit(1)
           }
           if (flagsExpectingValue.includes(cleanArg)) {
@@ -319,7 +335,7 @@ async function isExpectedArg(argList = args) {
         skip.add(i) // standalone positional arg, no value expected
       }
     } else {
-      console.error(`❌ Unexpected positional argument: ${a}`)
+      console.error(`[ft-to-inv] ❌ Unexpected positional argument: ${a}`)
       throw new Error(`Unexpected positional argument: ${a}`)
     }
   }
@@ -338,6 +354,8 @@ async function getToken(tokenArg) {
 const consoleOutput = []
 
 // -- Globals (to be assigned in bootstrap) --
+//#endregion
+//#region globals
 let TOKEN,
   INSTANCE,
   VERBOSE,
@@ -348,7 +366,11 @@ let TOKEN,
   HELP,
   CRON_SCHEDULE,
   DONT_SHORTEN_PATHS,
-  HELPCMD
+  HELPCMD,
+  // new level of logging that suppresses all output (except errors obviously)
+  SILENT,
+  // exact opposite of silent, shows EVERYTHING
+  VERY_VERBOSE
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH
 let OUTPUT_FILE, OLD_EXPORT_PATH
 let FIRST_TIME_SETUP = false // flag to indicate if we should run the first-time setup
@@ -374,6 +396,8 @@ let CHANGE
  * @param {string[]} envKey - Key in the environment variables (e.g., 'FT_TO_INV_CONFIG_DRY_RUN').
  * @returns {boolean} - Resolved boolean value.
  */
+//#endregion
+//#region helper functions
 function resolveFlagArg(args, aliases, config, configKey, envKey) {
   // Check CLI args: if any alias is present, treat as true
   const cliValue = aliases.some(flag => args.includes(flag))
@@ -420,8 +444,8 @@ function startHints() {
     const delay = getRandomInt(10_000, 60_000) // 10s–1m
     setTimeout(() => {
       // note: cant be hints.length + 1 because that returns NaN. ill have to update this manually as i add more hints :/
-      const hintNumber = getRandomInt(1, 77)
-      log(`💡 ${hints[hintNumber === 77 ? 76 : hintNumber]}`)
+      const hintNumber = getRandomInt(1, 91)
+      log(`💡 ${hints[hintNumber === 91 ? 90 : hintNumber]}`)
       scheduleNextHint() // queue another
     }, delay)
   }
@@ -437,8 +461,8 @@ async function maybeSchedule() {
     return
   } else {
     if (timesShown === 0) {
-      console.log(`⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`)
-      console.log('Press Ctrl+C to exit')
+      console.log(`[ft-to-inv] ⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`)
+      console.log('[ft-to-inv] Press Ctrl+C to exit')
       log('Logs will only be saved for the initial run.', { err: 'warning' })
       timesShown++
     }
@@ -463,8 +487,9 @@ async function maybeSchedule() {
 const currentTag = version
 async function getLatestRelease() {
   try {
+    if (SILENT) return null
     log('Checking for updates...', { err: 'info' })
-    const octokit = new Octokit() //       maybe ${} instead, but it looks like it works
+    const octokit = new Octokit() //       took 3 releases to figure out {} instead of ${} is an octokit thing
     const response = await octokit.request('GET /repos/{owner}/{repo}/releases/latest', {
       owner: 'riki-pedia',
       repo: 'ft-to-inv',
@@ -516,8 +541,18 @@ async function linuxWarning() {
 //#region main fts
 // Main function to run the export and sync process
 export async function main(overrides = {}) {
-  // get the first time setup flag at the top before it's run/skipped
-  // the last two params look in the config file, so those should be blank here
+  // this one needs to be checked here because some logs happen before we assign other vars
+  SILENT = await resolveConfig(null, {
+    cliNames: ['--silent'],
+    envNames: ['FT_TO_INV_CONFIG_SILENT', 'SILENT', 'FT_TO_INV_SILENT'],
+    config: {},
+    args: args,
+    isFlag: true,
+    positionalArgs: ['silent'],
+  })
+  const c = { silent: SILENT }
+  setGlobalVars(c)
+  if (!SILENT) log(`ft-to-inv v${version}:`)
   await getLatestRelease()
   await linuxWarning()
   // this NEEDS to run before first time setup so if the pass is too short they wont be stuck in a crash loop like i was while testing with passphrase "h"
@@ -537,6 +572,7 @@ export async function main(overrides = {}) {
     await changePass()
     return
   }
+  // i dont actually know why this is even a global because its only used here, but it works so whatever
   FIRST_TIME_SETUP = resolveFlagArg(
     args,
     ['--first-time-setup', '-fts', '--run-first-time-setup'],
@@ -574,7 +610,7 @@ export async function main(overrides = {}) {
     ]
   )
   if (dontRunSetup === true) {
-    console.warn('⚠️ Warning: Skipping setup due to setting DONT_RUN_SETUP')
+    log('⚠️ Warning: Skipping setup due to setting DONT_RUN_SETUP', { err: 'warning' })
   }
   if ((isFirstRun && dontRunSetup !== true) || FIRST_TIME_SETUP === true) {
     config = await runFirstTimeSetup()
@@ -641,11 +677,14 @@ export async function main(overrides = {}) {
     envNames: ['FT_TO_INV_CONFIG_REMOVE', 'REMOVE', 'FT_TO_INV_REMOVE'],
     config: config,
     args: args,
-    positionalArgs: ['remove', 'uninstall'],
+    positionalArgs: ['remove', 'uninstall', 'rm'],
   })
   if (REMOVE !== undefined && REMOVE !== null && typeof REMOVE === 'string' && REMOVE !== '') {
     await removePlugin(REMOVE)
     return
+  }
+  if (!SILENT && !QUIET) {
+    log('🔌 Loading plugins...')
   }
   await loadPlugins()
   await runHook('beforeMain', { overrides })
@@ -657,7 +696,8 @@ export async function main(overrides = {}) {
   )
   const clearConfigFlag = resolveFlagArg(args, ['--clear-config'], {}, null)
   if (clearFilesFlag === true || clearConfigFlag === true) {
-    clearFiles(clearConfigFlag)
+    // ive had this function for 10 releases and only just now realized its async
+    await clearFiles(clearConfigFlag)
     // exit early to prevent trying to sync with no files or config
     return
   }
@@ -713,6 +753,20 @@ export async function main(overrides = {}) {
     isFlag: true,
     positionalArgs: ['verbose'],
   })
+  VERY_VERBOSE = await resolveConfig('very_verbose', {
+    cliNames: ['--very-verbose', '-vv'],
+    envNames: [
+      'FT_TO_INV_CONFIG_VERY_VERBOSE',
+      'VERY_VERBOSE',
+      'FT_TO_INV_VERY_VERBOSE',
+      'FT_TO_INV_VERYVERBOSE',
+      'VERYVERBOSE',
+    ],
+    config: config,
+    args: args,
+    isFlag: true,
+    positionalArgs: ['very-verbose', 'veryVerbose', 'vv'],
+  })
   DRY_RUN = await resolveConfig('dry_run', {
     cliNames: ['--dry-run'],
     envNames: ['FT_TO_INV_CONFIG_DRY_RUN', 'DRY_RUN', 'FT_TO_INV_DRY_RUN'],
@@ -729,7 +783,7 @@ export async function main(overrides = {}) {
     isFlag: true,
     positionalArgs: ['quiet'],
   })
-  runHook('duringMain', { overrides })
+  await runHook('duringMain', { overrides })
   INSECURE = await resolveConfig('insecure', {
     cliNames: ['--insecure', '--http'],
     envNames: ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'],
@@ -835,6 +889,9 @@ export async function main(overrides = {}) {
   HELPCMD = overrides.helpcmd || HELPCMD
   SUBS = overrides.subscriptions || SUBS
   PLAYLISTS = overrides.playlists || PLAYLISTS
+  SILENT = overrides.silent || SILENT
+  VERY_VERBOSE = overrides.veryVerbose || VERY_VERBOSE
+  // note: plugins dont go here because they need to be loaded earlier then exit
   const conf = {
     instance: INSTANCE,
     token: TOKEN,
@@ -852,10 +909,13 @@ export async function main(overrides = {}) {
     helpcmd: HELPCMD,
     subscriptions: SUBS,
     playlists: PLAYLISTS,
+    silent: SILENT,
+    veryVerbose: VERY_VERBOSE,
   }
   // needed to change because config was always {}
   // this is only so plugins can use it
-  await runHook('afterMain', { overrides, conf })
+  await setGlobalVars(conf)
+  await runHook('afterMain', conf)
   // leaving this one, exits early
   HELP = resolveFlagArg(args, ['--help', '-h', '/?', '-?'], config, 'help')
   //#endregion
@@ -863,6 +923,8 @@ export async function main(overrides = {}) {
   if (HELP === true) {
     console.log(
       `FreeTube to Invidious Exporter
+     !!! THIS IS OLD PLEASE LOOK UP AN INDIVIDUAL COMMAND IF YOU NEED HELP !!!
+     !!! IM NOT UPDATING THIS !!!
     Configuration options:
     Argument                                  Explanation
     --token, -t               (required) Your Invidious SID cookie for authentication.
@@ -1110,7 +1172,68 @@ Aliases:
  This is useful for debugging and monitoring the export process. This only sets logging, you can't change the name of the file. If you REALLY want a custom file, run something like this:
  ft-to-inv | tee custom-log-file.txt
  `)
-    }
+    } else if (h === 'first-time-setup' || h === 'fts' || h === 'run-first-time-setup') {
+      log(`
+First Time Setup:
+ Run the first time setup wizard.
+Usage:
+ ft-to-inv --first-time-setup # no pos arg sorry
+Aliases:
+ --first-time-setup, -fts, --run-first-time-setup
+ FT_TO_INV_CONFIG_FIRST_TIME_SETUP, FIRST_TIME_SETUP, FT_TO_INV_FIRST_TIME_SETUP, FTS
+ Runs an interactive setup wizard to help you configure the tool for the first time.
+ `)
+    } else if (h === 'change-passphrase' || h === 'change-pass') {
+      log(`
+Change Passphrase:
+ Change the encryption passphrase for your stored token.
+Usage:
+ ft-to-inv change-passphrase
+Aliases:
+ --change-passphrase, --change-pass
+ FT_TO_INV_CONFIG_CHANGE_PASSPHRASE, CHANGE_PASSPHRASE, FT_TO_INV_CHANGE_PASSPHRASE
+ Runs an interactive prompt to change your encryption passphrase.
+ `)
+    } else if (
+      h === 'plugins' ||
+      h === 'plugin' ||
+      h === 'add' ||
+      h === 'install' ||
+      h === 'remove' ||
+      h === 'uninstall' ||
+      h === 'marketplace' ||
+      h === 'list'
+    ) {
+      log(`
+Plugins:
+ Manage plugins for the tool. I made this poorly so please read closely.
+Usage:
+ ft-to-inv plugins
+Aliases:
+ --plugins, -p
+ FT_TO_INV_CONFIG_PLUGINS, PLUGINS, FT_TO_INV_PLUGINS
+ Use this command to manage plugins. You can list installed plugins, install new ones, and remove existing ones.
+ To list installed plugins, run:
+ ft-to-inv plugins list
+ To install a plugin, run:
+ ft-to-inv install <plugin-name>
+ To remove a plugin, run:
+ ft-to-inv remove <plugin-name>
+ To list available plugins from the marketplace, run:
+ ft-to-inv marketplace
+ `)
+    } else if (h === 'silent') {
+      log(`
+Silent:
+ Suppress all console output.
+Usage:
+ ft-to-inv silent
+Aliases:
+ --silent
+ FT_TO_INV_CONFIG_SILENT, SILENT, FT_TO_INV_SILENT
+ Suppresses all console output, including errors. Useful for running the tool in the background or as a cron job.
+ `)
+    } else return log(`❌ Unknown help topic: ${HELPCMD || h}`, { err: 'error' })
     return
   }
   //#endregion
@@ -1189,17 +1312,19 @@ function certErrorHint(err) {
 //#endregion
 //#region sync
 export async function sync() {
+  const old = readOldExport()
   let historyData = await loadNDJSON(HISTORY_PATH)
   if (HISTORY === true) {
-    historyData = []
+    historyData = old.watch_history
   }
   let playlistData = await loadNDJSON(PLAYLIST_PATH)
   if (PLAYLISTS === true) {
-    playlistData = []
+    playlistData = old.playlists
   }
+  // assuming it outputs an array like the old export file does
   let subscriptions = await extractSubscriptions(PROFILE_PATH)
   if (SUBS === true) {
-    subscriptions = []
+    subscriptions = old.subscriptions
   }
   // disabled because || [] is to catch undefined, but map on undefined errors anyway
   // eslint-disable-next-line no-constant-binary-expression
@@ -1224,6 +1349,8 @@ export async function sync() {
     subscriptions,
     watch_history,
     preferences: {
+      // these are default prefs (i think), but the region is set to US by default
+      // shouldnt be a big deal but idk how to test this kind of thing
       default_home: 'Popular',
       annotations: false,
       autoplay: false,
@@ -1253,7 +1380,6 @@ export async function sync() {
 
   if (VERBOSE) log(`Calculating diffs...`, { err: 'info' })
 
-  const old = readOldExport()
   const safeOldPlaylists = (old.playlists || []).filter(
     op => op && typeof op.title === 'string' && Array.isArray(op.videos)
   )
@@ -1493,7 +1619,7 @@ export async function sync() {
     //#region new subs
     let subCount = 0
     let subSpinner
-    if (!QUIET) {
+    if (!QUIET && !SUBS && newSubs.length) {
       subSpinner = ora(
         `Syncing subscriptions... (${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'})`
       ).start()
@@ -1536,7 +1662,7 @@ export async function sync() {
     if (VERBOSE) log(`Starting playlist export...`, { err: 'info' })
     const plSummary = []
     let plSpinner
-    if (!QUIET) {
+    if (!QUIET && !PLAYLISTS && newPlaylists.length) {
       plSummary.push(
         `You will need to import the playlists manually into Invidious. Go to your instance > Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file. The playlists are:`
       )
@@ -1550,65 +1676,70 @@ export async function sync() {
         .map(pl => pl.title.toLowerCase())
     )
     let plCount = 0
-    try {
-      for (const pl of newPlaylists) {
-        if (!pl || typeof pl.title !== 'string') {
-          log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { err: 'warning' })
-          continue // probably should break here but eh
+    if (newPlaylists.length && !PLAYLISTS) {
+      try {
+        for (const pl of newPlaylists) {
+          if (!pl || typeof pl.title !== 'string') {
+            log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { err: 'warning' })
+            continue // probably should break here but eh
+          }
+          if (!QUIET && plSpinner) {
+            plCount++
+            plSpinner.text = `Preparing playlist export... (${plCount}/${newPlaylists.length} playlists)`
+          }
+          if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
+            log(`ℹ️ Skipping existing playlist: "${pl.title}"`, { err: 'info' })
+            continue
+          }
+          // Add to playlist import structure
+          playlistsToImport.push({
+            title: pl.title,
+            description: pl.description,
+            privacy: pl.privacy ?? 'Private',
+            videos: pl.videos,
+          })
+          plSummary.push(` - "${pl.title}"`)
         }
         if (!QUIET && plSpinner) {
-          plCount++
-          plSpinner.text = `Preparing playlist export... (${plCount}/${newPlaylists.length} playlists)`
+          for (const line of plSummary) log(line, { color: 'green' })
+          // if theres somebody reading over these, im doing it this way for a few reasons
+          // 1. consistency with the other spinners
+          // 2. i dont want to have to refactor the whole function to async/await just for this one part
+          // 3. its easier to read this way imo
+          // 4. this is all for quiet mode, its not a big enough deal to warrant a full refactor
+          plSpinner.succeed(
+            `✅ Prepared ${playlistsToImport.length} playlist${playlistsToImport.length === 1 ? '' : 's'} for import`
+          )
         }
-        if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
-          log(`ℹ️ Skipping existing playlist: "${pl.title}"`, { err: 'info' })
-          continue
+        if (playlistsToImport.length > 0 && hadErrors === false) {
+          const importPath = './playlist-import.json'
+          writePlaylistImport(playlistsToImport, importPath)
+          if (!QUIET) {
+            log(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`, {
+              color: 'green',
+            })
+          }
+          log(
+            `playlist export complete. import the playlist-import.json file into your Invidious instance to finish the process.`
+          )
+        } else {
+          if (!QUIET) {
+            log(`✅ No new playlists to import`)
+          }
         }
-        // Add to playlist import structure
-        playlistsToImport.push({
-          title: pl.title,
-          description: pl.description,
-          privacy: pl.privacy ?? 'Private',
-          videos: pl.videos,
-        })
-        plSummary.push(` - "${pl.title}"`)
-      }
-      if (!QUIET && plSpinner) {
-        for (const line of plSummary) log(line, { color: 'green' })
-        // if theres somebody reading over these, im doing it this way for a few reasons
-        // 1. consistency with the other spinners
-        // 2. i dont want to have to refactor the whole function to async/await just for this one part
-        // 3. its easier to read this way imo
-        // 4. this is all for quiet mode, its not a big enough deal to warrant a full refactor
-        plSpinner.succeed(
-          `✅ Prepared ${playlistsToImport.length} playlist${playlistsToImport.length === 1 ? '' : 's'} for import`
-        )
-      }
-      if (playlistsToImport.length > 0 && hadErrors === false) {
-        const importPath = './playlist-import.json'
-        writePlaylistImport(playlistsToImport, importPath)
+      } catch (err) {
         if (!QUIET) {
-          log(`📤 Wrote ${playlistsToImport.length} playlists to ${importPath}`, { color: 'green' })
+          plSpinner?.fail(`❌ Failed to prepare playlist import: ${err.message || err}`)
         }
-        log(
-          `playlist export complete. import the playlist-import.json file into your Invidious instance to finish the process.`
-        )
-      } else {
-        if (!QUIET) {
-          log(`✅ No new playlists to import`)
-        }
+        await markError('Failed to prepare playlist import', err)
       }
-    } catch (err) {
-      if (!QUIET) {
-        plSpinner?.fail(`❌ Failed to prepare playlist import: ${err.message || err}`)
-      }
-      await markError('Failed to prepare playlist import', err)
     }
     //#endregion
     //#region removed history
     let removedHisCnt = 0
     // Remove watched videos
     let rmHSpinner
+    // THIS IS THE CORRECT WAY TO DO IT BUT THIS IS THE ONLY BLOCK WHERE I DID IT THIS WAY
     if (removedHistory.length) {
       if (!QUIET) {
         rmHSpinner = ora(
@@ -1774,7 +1905,8 @@ if (modulePath === entryPath) {
     log(`❌ Fatal error: ${err}`, { err: 'error' })
     logConsoleOutput()
     await runHook('onError', { error: err })
-    console.log('waiting for writes to finish before exiting')
+    console.log('[ft-to-inv] waiting for writes to finish before exiting')
+    console.log('[ft-to-inv] if this keeps happening please report an issue')
     setTimeout(() => {
       process.exit(1)
     }, 100)

@@ -52,7 +52,7 @@
     minimatch "^3.1.2"
     strip-json-comments "^3.1.1"
 
-"@eslint/js@9.38.0", "@eslint/js@^9.38.0":
+"@eslint/js@^9.38.0", "@eslint/js@9.38.0":
   version "9.38.0"
   resolved "https://registry.npmjs.org/@eslint/js/-/js-9.38.0.tgz"
   integrity sha512-UZ1VpFvXf9J06YG9xQBdnzU+kthors6KjhMAl6f4gH4usHyh31rUf2DLGInT8RFYIReYXNSydgPY0V2LuWgl7A==
@@ -101,7 +101,7 @@
     "@nodelib/fs.stat" "2.0.5"
     run-parallel "^1.1.9"
 
-"@nodelib/fs.stat@2.0.5", "@nodelib/fs.stat@^2.0.2":
+"@nodelib/fs.stat@^2.0.2", "@nodelib/fs.stat@2.0.5":
   version "2.0.5"
   resolved "https://registry.npmjs.org/@nodelib/fs.stat/-/fs.stat-2.0.5.tgz"
   integrity sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A==
@@ -116,7 +116,7 @@
 
 "@octokit/app@^16.1.1":
   version "16.1.1"
-  resolved "https://registry.yarnpkg.com/@octokit/app/-/app-16.1.1.tgz#3b72ba6266d67b2e011e5ea369f92712fd920f61"
+  resolved "https://registry.npmjs.org/@octokit/app/-/app-16.1.1.tgz"
   integrity sha512-pcvKSN6Q6aT3gU5heoDFs3ywU5xejxeqs1rQpUwgN7CmBlxCSy9aCoqFuC6GpVv71O/Qq/VuYfCNzrOZp/9Ycw==
   dependencies:
     "@octokit/auth-app" "^8.1.1"
@@ -129,7 +129,7 @@
 
 "@octokit/auth-app@^8.1.1":
   version "8.1.1"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-8.1.1.tgz#28b76c2f861b196c1bf050eeecca21c7931dcab1"
+  resolved "https://registry.npmjs.org/@octokit/auth-app/-/auth-app-8.1.1.tgz"
   integrity sha512-yW9YUy1cuqWlz8u7908ed498wJFt42VYsYWjvepjojM4BdZSp4t+5JehFds7LfvYi550O/GaUI94rgbhswvxfA==
   dependencies:
     "@octokit/auth-oauth-app" "^9.0.2"
@@ -143,7 +143,7 @@
 
 "@octokit/auth-oauth-app@^9.0.2":
   version "9.0.2"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-oauth-app/-/auth-oauth-app-9.0.2.tgz#e21b4501d3ce09cf7fb251b566d95b52a769c9dc"
+  resolved "https://registry.npmjs.org/@octokit/auth-oauth-app/-/auth-oauth-app-9.0.2.tgz"
   integrity sha512-vmjSHeuHuM+OxZLzOuoYkcY3OPZ8erJ5lfswdTmm+4XiAKB5PmCk70bA1is4uwSl/APhRVAv4KHsgevWfEKIPQ==
   dependencies:
     "@octokit/auth-oauth-device" "^8.0.2"
@@ -154,7 +154,7 @@
 
 "@octokit/auth-oauth-device@^8.0.2":
   version "8.0.2"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-oauth-device/-/auth-oauth-device-8.0.2.tgz#2ba6a0569e12da8efe4420af2b6b33a857f62532"
+  resolved "https://registry.npmjs.org/@octokit/auth-oauth-device/-/auth-oauth-device-8.0.2.tgz"
   integrity sha512-KW7Ywrz7ei7JX+uClWD2DN1259fnkoKuVdhzfpQ3/GdETaCj4Tx0IjvuJrwhP/04OhcMu5yR6tjni0V6LBihdw==
   dependencies:
     "@octokit/oauth-methods" "^6.0.1"
@@ -164,7 +164,7 @@
 
 "@octokit/auth-oauth-user@^6.0.1":
   version "6.0.1"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-oauth-user/-/auth-oauth-user-6.0.1.tgz#fbd838112e5cec0329a8ebe16fe983d065aa187d"
+  resolved "https://registry.npmjs.org/@octokit/auth-oauth-user/-/auth-oauth-user-6.0.1.tgz"
   integrity sha512-vlKsL1KUUPvwXpv574zvmRd+/4JiDFXABIZNM39+S+5j2kODzGgjk7w5WtiQ1x24kRKNaE7v9DShNbw43UA3Hw==
   dependencies:
     "@octokit/auth-oauth-device" "^8.0.2"
@@ -180,15 +180,15 @@
 
 "@octokit/auth-unauthenticated@^7.0.2":
   version "7.0.2"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-unauthenticated/-/auth-unauthenticated-7.0.2.tgz#3b53e1a93589ca41302fad53c33879a3c5d791c8"
+  resolved "https://registry.npmjs.org/@octokit/auth-unauthenticated/-/auth-unauthenticated-7.0.2.tgz"
   integrity sha512-vjcPRP1xsKWdYKiyKmHkLFCxeH4QvVTv05VJlZxwNToslBFcHRJlsWRaoI2+2JGCf9tIM99x8cN0b1rlAHJiQw==
   dependencies:
     "@octokit/request-error" "^7.0.1"
     "@octokit/types" "^15.0.0"
 
-"@octokit/core@^7.0.5":
+"@octokit/core@^7.0.0", "@octokit/core@^7.0.5", "@octokit/core@>=6", "@octokit/core@>=7":
   version "7.0.5"
-  resolved "https://registry.yarnpkg.com/@octokit/core/-/core-7.0.5.tgz#2611ed0a0b99a278f67e4ffdfedaea4577ca3241"
+  resolved "https://registry.npmjs.org/@octokit/core/-/core-7.0.5.tgz"
   integrity sha512-t54CUOsFMappY1Jbzb7fetWeO0n6K0k/4+/ZpkS+3Joz8I4VcvY9OiEBFRYISqaI2fq5sCiPtAjRDOzVYG8m+Q==
   dependencies:
     "@octokit/auth-token" "^6.0.0"
@@ -201,7 +201,7 @@
 
 "@octokit/endpoint@^11.0.1":
   version "11.0.1"
-  resolved "https://registry.yarnpkg.com/@octokit/endpoint/-/endpoint-11.0.1.tgz#16c510afbe873174f2091b747abe3c21769e6b55"
+  resolved "https://registry.npmjs.org/@octokit/endpoint/-/endpoint-11.0.1.tgz"
   integrity sha512-7P1dRAZxuWAOPI7kXfio88trNi/MegQ0IJD3vfgC3b+LZo1Qe6gRJc2v0mz2USWWJOKrB2h5spXCzGbw+fAdqA==
   dependencies:
     "@octokit/types" "^15.0.0"
@@ -209,7 +209,7 @@
 
 "@octokit/graphql@^9.0.2":
   version "9.0.2"
-  resolved "https://registry.yarnpkg.com/@octokit/graphql/-/graphql-9.0.2.tgz#910a626d1e11c385357d1579cc1840f1725aa6ef"
+  resolved "https://registry.npmjs.org/@octokit/graphql/-/graphql-9.0.2.tgz"
   integrity sha512-iz6KzZ7u95Fzy9Nt2L8cG88lGRMr/qy1Q36ih/XVzMIlPDMYwaNLE/ENhqmIzgPrlNWiYJkwmveEetvxAgFBJw==
   dependencies:
     "@octokit/request" "^10.0.4"
@@ -218,7 +218,7 @@
 
 "@octokit/oauth-app@^8.0.2":
   version "8.0.3"
-  resolved "https://registry.yarnpkg.com/@octokit/oauth-app/-/oauth-app-8.0.3.tgz#56172be3be768f9c38f12a63e5ef8d6644fd7efb"
+  resolved "https://registry.npmjs.org/@octokit/oauth-app/-/oauth-app-8.0.3.tgz"
   integrity sha512-jnAjvTsPepyUaMu9e69hYBuozEPgYqP4Z3UnpmvoIzHDpf8EXDGvTY1l1jK0RsZ194oRd+k6Hm13oRU8EoDFwg==
   dependencies:
     "@octokit/auth-oauth-app" "^9.0.2"
@@ -237,7 +237,7 @@
 
 "@octokit/oauth-methods@^6.0.1":
   version "6.0.1"
-  resolved "https://registry.yarnpkg.com/@octokit/oauth-methods/-/oauth-methods-6.0.1.tgz#326c0fbb89531b5495a3f218e7084f295fff40f4"
+  resolved "https://registry.npmjs.org/@octokit/oauth-methods/-/oauth-methods-6.0.1.tgz"
   integrity sha512-xi6Iut3izMCFzXBJtxxJehxJmAKjE8iwj6L5+raPRwlTNKAbOOBJX7/Z8AF5apD4aXvc2skwIdOnC+CQ4QuA8Q==
   dependencies:
     "@octokit/oauth-authorization-url" "^8.0.0"
@@ -262,21 +262,21 @@
 
 "@octokit/plugin-paginate-rest@^13.2.0":
   version "13.2.1"
-  resolved "https://registry.yarnpkg.com/@octokit/plugin-paginate-rest/-/plugin-paginate-rest-13.2.1.tgz#7ad36e7732a391e5ce9ce4e23fa8023127a0f162"
+  resolved "https://registry.npmjs.org/@octokit/plugin-paginate-rest/-/plugin-paginate-rest-13.2.1.tgz"
   integrity sha512-Tj4PkZyIL6eBMYcG/76QGsedF0+dWVeLhYprTmuFVVxzDW7PQh23tM0TP0z+1MvSkxB29YFZwnUX+cXfTiSdyw==
   dependencies:
     "@octokit/types" "^15.0.1"
 
 "@octokit/plugin-rest-endpoint-methods@^16.1.0":
-  version "16.1.1"
-  resolved "https://registry.yarnpkg.com/@octokit/plugin-rest-endpoint-methods/-/plugin-rest-endpoint-methods-16.1.1.tgz#cf5e901a06c411a879e880499db8152c295b6645"
-  integrity sha512-VztDkhM0ketQYSh5Im3IcKWFZl7VIrrsCaHbDINkdYeiiAsJzjhS2xRFCSJgfN6VOcsoW4laMtsmf3HcNqIimg==
+  version "16.1.0"
+  resolved "https://registry.npmjs.org/@octokit/plugin-rest-endpoint-methods/-/plugin-rest-endpoint-methods-16.1.0.tgz"
+  integrity sha512-nCsyiKoGRnhH5LkH8hJEZb9swpqOcsW+VXv1QoyUNQXJeVODG4+xM6UICEqyqe9XFr6LkL8BIiFCPev8zMDXPw==
   dependencies:
-    "@octokit/types" "^15.0.1"
+    "@octokit/types" "^15.0.0"
 
 "@octokit/plugin-retry@^8.0.2":
   version "8.0.2"
-  resolved "https://registry.yarnpkg.com/@octokit/plugin-retry/-/plugin-retry-8.0.2.tgz#9cb012d9e8f8ea2771052fafa0c309c56df4027a"
+  resolved "https://registry.npmjs.org/@octokit/plugin-retry/-/plugin-retry-8.0.2.tgz"
   integrity sha512-mVPCe77iaD8g1lIX46n9bHPUirFLzc3BfIzsZOpB7bcQh1ecS63YsAgcsyMGqvGa2ARQWKEFTrhMJX2MLJVHVw==
   dependencies:
     "@octokit/request-error" "^7.0.1"
@@ -285,7 +285,7 @@
 
 "@octokit/plugin-throttling@^11.0.2":
   version "11.0.2"
-  resolved "https://registry.yarnpkg.com/@octokit/plugin-throttling/-/plugin-throttling-11.0.2.tgz#22727f72630ce966cd163149a55bd56a9e0434fb"
+  resolved "https://registry.npmjs.org/@octokit/plugin-throttling/-/plugin-throttling-11.0.2.tgz"
   integrity sha512-ntNIig4zZhQVOZF4fG9Wt8QCoz9ehb+xnlUwp74Ic2ANChCk8oKmRwV9zDDCtrvU1aERIOvtng8wsalEX7Jk5Q==
   dependencies:
     "@octokit/types" "^15.0.0"
@@ -293,14 +293,14 @@
 
 "@octokit/request-error@^7.0.0", "@octokit/request-error@^7.0.1":
   version "7.0.1"
-  resolved "https://registry.yarnpkg.com/@octokit/request-error/-/request-error-7.0.1.tgz#2651faef1ed387583d73d9a38452b216a5c6975d"
+  resolved "https://registry.npmjs.org/@octokit/request-error/-/request-error-7.0.1.tgz"
   integrity sha512-CZpFwV4+1uBrxu7Cw8E5NCXDWFNf18MSY23TdxCBgjw1tXXHvTrZVsXlW8hgFTOLw8RQR1BBrMvYRtuyaijHMA==
   dependencies:
     "@octokit/types" "^15.0.0"
 
 "@octokit/request@^10.0.4", "@octokit/request@^10.0.5":
   version "10.0.5"
-  resolved "https://registry.yarnpkg.com/@octokit/request/-/request-10.0.5.tgz#bbe476579db7876af783a10b802bdc37903c2220"
+  resolved "https://registry.npmjs.org/@octokit/request/-/request-10.0.5.tgz"
   integrity sha512-TXnouHIYLtgDhKo+N6mXATnDBkV05VwbR0TtMWpgTHIoQdRQfCSzmy/LGqR1AbRMbijq/EckC/E3/ZNcU92NaQ==
   dependencies:
     "@octokit/endpoint" "^11.0.1"
@@ -311,7 +311,7 @@
 
 "@octokit/types@^15.0.0", "@octokit/types@^15.0.1":
   version "15.0.1"
-  resolved "https://registry.yarnpkg.com/@octokit/types/-/types-15.0.1.tgz#1e84e1e9b783b828b9616a113b174d7fec6a5618"
+  resolved "https://registry.npmjs.org/@octokit/types/-/types-15.0.1.tgz"
   integrity sha512-sdiirM93IYJ9ODDCBgmRPIboLbSkpLa5i+WLuXH8b8Atg+YMLAyLvDDhNWLV4OYd08tlvYfVm/dw88cqHWtw1Q==
   dependencies:
     "@octokit/openapi-types" "^26.0.0"
@@ -336,9 +336,9 @@
   integrity sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==
 
 "@types/aws-lambda@^8.10.83":
-  version "8.10.152"
-  resolved "https://registry.npmjs.org/@types/aws-lambda/-/aws-lambda-8.10.152.tgz"
-  integrity sha512-soT/c2gYBnT5ygwiHPmd9a1bftj462NWVk2tKCc1PYHSIacB2UwbTS2zYG4jzag1mRDuzg/OjtxQjQ2NKRB6Rw==
+  version "8.10.156"
+  resolved "https://registry.npmjs.org/@types/aws-lambda/-/aws-lambda-8.10.156.tgz"
+  integrity sha512-LElQP+QliVWykC7OF8dNr04z++HJCMO2lF7k9HuKoSDARqhcjHq8MzbrRwujCSDeBHIlvaimbuY/tVZL36KXFQ==
 
 "@types/estree@^1.0.6":
   version "1.0.8"
@@ -365,7 +365,7 @@
     natural-compare "^1.4.0"
     ts-api-utils "^2.1.0"
 
-"@typescript-eslint/parser@8.46.1":
+"@typescript-eslint/parser@^8.46.1", "@typescript-eslint/parser@8.46.1":
   version "8.46.1"
   resolved "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.46.1.tgz"
   integrity sha512-6JSSaBZmsKvEkbRUkf7Zj7dru/8ZCrJxAqArcLaVMee5907JdtEbKGsZ7zNiIm/UAkpGUkaSMZEXShnN2D1HZA==
@@ -393,7 +393,7 @@
     "@typescript-eslint/types" "8.46.1"
     "@typescript-eslint/visitor-keys" "8.46.1"
 
-"@typescript-eslint/tsconfig-utils@8.46.1", "@typescript-eslint/tsconfig-utils@^8.46.1":
+"@typescript-eslint/tsconfig-utils@^8.46.1", "@typescript-eslint/tsconfig-utils@8.46.1":
   version "8.46.1"
   resolved "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.46.1.tgz"
   integrity sha512-X88+J/CwFvlJB+mK09VFqx5FE4H5cXD+H/Bdza2aEWkSb8hnWIQorNcscRl4IEo1Cz9VI/+/r/jnGWkbWPx54g==
@@ -409,7 +409,7 @@
     debug "^4.3.4"
     ts-api-utils "^2.1.0"
 
-"@typescript-eslint/types@8.46.1", "@typescript-eslint/types@^8.46.1":
+"@typescript-eslint/types@^8.46.1", "@typescript-eslint/types@8.46.1":
   version "8.46.1"
   resolved "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.46.1.tgz"
   integrity sha512-C+soprGBHwWBdkDpbaRC4paGBrkIXxVlNohadL5o0kfhsXqOC6GYH2S/Obmig+I0HTDl8wMaRySwrfrXVP8/pQ==
@@ -453,7 +453,7 @@ acorn-jsx@^5.3.2:
   resolved "https://registry.npmjs.org/acorn-jsx/-/acorn-jsx-5.3.2.tgz"
   integrity sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==
 
-acorn@^8.15.0:
+"acorn@^6.0.0 || ^7.0.0 || ^8.0.0", acorn@^8.15.0:
   version "8.15.0"
   resolved "https://registry.npmjs.org/acorn/-/acorn-8.15.0.tgz"
   integrity sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==
@@ -694,7 +694,7 @@ escape-string-regexp@^4.0.0:
   resolved "https://registry.npmjs.org/escape-string-regexp/-/escape-string-regexp-4.0.0.tgz"
   integrity sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==
 
-eslint-config-prettier@^10.1.8:
+eslint-config-prettier@^10.1.8, "eslint-config-prettier@>= 7.0.0 <10.0.0 || >=10.1.0":
   version "10.1.8"
   resolved "https://registry.npmjs.org/eslint-config-prettier/-/eslint-config-prettier-10.1.8.tgz"
   integrity sha512-82GZUjRS0p/jganf6q1rEO25VSoHH0hKPCTrgillPjdI/3bgBhAE1QzHrHTizjpRvy6pGAvKjDJtk2pF9NDq8w==
@@ -725,7 +725,7 @@ eslint-visitor-keys@^4.2.1:
   resolved "https://registry.npmjs.org/eslint-visitor-keys/-/eslint-visitor-keys-4.2.1.tgz"
   integrity sha512-Uhdk5sfqcee/9H/rCOJikYz67o0a2Tw2hGRPOG2Y1R2dg7brRe1uG0yaNQDHu+TO/uQPF/5eCapvYSmHUjt7JQ==
 
-eslint@^9.38.0:
+"eslint@^6.0.0 || ^7.0.0 || >=8.0.0", "eslint@^8.57.0 || ^9.0.0", eslint@^9.38.0, eslint@>=7.0.0, eslint@>=8.0.0:
   version "9.38.0"
   resolved "https://registry.npmjs.org/eslint/-/eslint-9.38.0.tgz"
   integrity sha512-t5aPOpmtJcZcz5UJyY2GbvpDlsK5E8JqRqoKtfiKE3cNh437KIqfJr3A3AKf5k64NPx6d0G3dno6XDY05PqPtw==
@@ -905,6 +905,24 @@ fs-constants@^1.0.0:
   version "1.0.0"
   resolved "https://registry.npmjs.org/fs-constants/-/fs-constants-1.0.0.tgz"
   integrity sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==
+
+ft-to-inv@^1.1.6:
+  version "1.1.6"
+  resolved "https://registry.npmjs.org/ft-to-inv/-/ft-to-inv-1.1.6.tgz"
+  integrity sha512-cmkaQYKDldlPoWkTu3QT/fv0Y3stlceJS8vHoKXSwMLsO53rnSfr01ijryFQDPTWkLLZKn8Kg/ka4tXpY/bzaA==
+  dependencies:
+    chalk "^4.1.2"
+    cli-progress "^3.12.0"
+    comment-json "^4.2.5"
+    dotenv "^17.2.2"
+    keytar "^7.9.0"
+    node-cron "^4.2.1"
+    node-fetch "^3.3.2"
+    node-notifier "^10.0.1"
+    octokit "^5.0.0"
+    ora "^9.0.0"
+    semver "^7.7.2"
+    strip-json-comments "^5.0.3"
 
 get-east-asian-width@^1.3.0:
   version "1.4.0"
@@ -1285,7 +1303,7 @@ node-notifier@^10.0.1:
 
 octokit@^5.0.0:
   version "5.0.4"
-  resolved "https://registry.yarnpkg.com/octokit/-/octokit-5.0.4.tgz#09efcb0c3247f8587237c14c49fcd395da3a5d0f"
+  resolved "https://registry.npmjs.org/octokit/-/octokit-5.0.4.tgz"
   integrity sha512-4n/mMoLQs2npBE+aTG5o4H+hZhFKu8aDqZFP/nmUNRUYrTpXpaqvX1ppK5eiCtQ+uP/8jI6vbdfCB2udlBgccA==
   dependencies:
     "@octokit/app" "^16.1.1"
@@ -1414,7 +1432,7 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
-prettier@^3.6.2:
+prettier@^3.6.2, prettier@>=3.0.0:
   version "3.6.2"
   resolved "https://registry.npmjs.org/prettier/-/prettier-3.6.2.tgz"
   integrity sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==
@@ -1537,6 +1555,13 @@ stdin-discarder@^0.2.2:
   resolved "https://registry.npmjs.org/stdin-discarder/-/stdin-discarder-0.2.2.tgz"
   integrity sha512-UhDfHmA92YAlNnCfhmq0VeNL5bDbiZGg7sZ2IvPsXubGkiNa9EC+tUTsjBRsYUAz87btI6/1wf4XoVvQ3uRnmQ==
 
+string_decoder@^1.1.1:
+  version "1.3.0"
+  resolved "https://registry.npmjs.org/string_decoder/-/string_decoder-1.3.0.tgz"
+  integrity sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==
+  dependencies:
+    safe-buffer "~5.2.0"
+
 string-width@^4.2.3:
   version "4.2.3"
   resolved "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz"
@@ -1553,13 +1578,6 @@ string-width@^8.1.0:
   dependencies:
     get-east-asian-width "^1.3.0"
     strip-ansi "^7.1.0"
-
-string_decoder@^1.1.1:
-  version "1.3.0"
-  resolved "https://registry.npmjs.org/string_decoder/-/string_decoder-1.3.0.tgz"
-  integrity sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==
-  dependencies:
-    safe-buffer "~5.2.0"
 
 strip-ansi@^6.0.1:
   version "6.0.1"
@@ -1665,6 +1683,11 @@ typescript-eslint@^8.46.1:
     "@typescript-eslint/parser" "8.46.1"
     "@typescript-eslint/typescript-estree" "8.46.1"
     "@typescript-eslint/utils" "8.46.1"
+
+typescript@>=4.8.4, "typescript@>=4.8.4 <6.0.0":
+  version "5.9.3"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz"
+  integrity sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==
 
 universal-github-app-jwt@^2.2.0:
   version "2.2.2"

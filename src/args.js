@@ -96,3 +96,39 @@ export async function resolveConfig(
     return fallback
   }
 }
+// global arg table. the above function will set these values
+// strings should be null if not set, booleans should be false if not set
+// apparently i use snake_case for the config object but camelCase for literally everything else
+export const argTable = {
+  token: null,
+  instance: null,
+  insecure: false,
+  cron: null,
+  marketplace: null,
+  silent: false,
+  veryVerbose: false,
+  verbose: false,
+  freetube_dir: null,
+  export_dir: null,
+  quiet: false,
+  no_sync: false,
+  subs: false,
+  history: false,
+  playlists: false,
+  dry_run: false,
+  dont_shorten_paths: false,
+  logs: false,
+}
+async function sleep(s) {
+  return new Promise(resolve => setTimeout(resolve, s * 1000))
+}
+// i conveniently export an object for plugins that contains the full config
+// we just need to set argTable values from the config object
+export async function setGlobalVars(config) {
+  Object.assign(argTable, config)
+  await sleep(0.5)
+}
+export async function getGlobalVars() {
+  return argTable
+}
+export default { argTable, resolveConfig, setGlobalVars, getGlobalVars }

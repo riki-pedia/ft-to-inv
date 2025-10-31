@@ -23,7 +23,7 @@ export function logConsoleOutput(file = outFile, outputArr = consoleOutput) {
   const logData = outputArr.join('\n') + '\n'
   appendFileSync(file, logData)
   if (timesShown === 0) {
-    console.log(`✅ Logged console output to ${file}`)
+    console.log(`[ft-to-inv] ✅ Logged console output to ${file}`)
     timesShown += 1
   } // Clear the array after writing to prevent writing the same logs multiple times
   // if this function is called more than once.
@@ -44,18 +44,18 @@ export function log(message, options = {}) {
   c.push(formattedMessage)
 
   if (!err && !color) {
-    console.log(message)
+    console.log('[ft-to-inv] ' + message)
   }
   if (err === 'error') {
-    console.error(chalk.red('Error! ') + message)
+    console.error('[ft-to-inv] ' + chalk.red('Error! ') + message)
   }
   if (err === 'warning') {
-    console.warn(chalk.yellow('Warning! ') + message)
+    console.warn('[ft-to-inv] ' + chalk.yellow('Warning! ') + message)
   }
   if (err === 'info') {
-    console.info(chalk.blue('Info: ') + message)
+    console.info('[ft-to-inv] ' + chalk.blue('Info: ') + message)
   }
   if (color !== null && color !== undefined) {
-    console.log(chalk[color](message))
+    console.log('[ft-to-inv] ' + chalk[color](message))
   }
 }

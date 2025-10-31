@@ -140,7 +140,7 @@ export async function getPassphrase() {
 export async function changePassphraseInKeychain() {
   try {
     await keytar.deletePassword(SERVICE, ACCOUNT)
-    const newPass = await prompt('Enter new passphrase: ', { type: 'password' })
+    const newPass = await prompt('Enter new passphrase: ', null, true)
     if (newPass.length < MIN_PASSPHRASE_LENGTH) {
       throw new Error(`New passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters long`)
     }
