@@ -15,9 +15,11 @@ Takes FreeTube data and exports it to invidious-import.json, where it can be opt
 
 ## Why?
 "FreeTube is great for local use, but it doesn’t sync across devices. Invidious does. This tool bridges the gap so your history, subscriptions, and playlists stay consistent." - albert einstein i think 
-### Warning: 
-wsl isnt supported right now, if you want to run on windows, use cmd, powershell, or windows terminal. Wsl has issues with keytar and system keychains. also its ur fault if my tool eats your files or something like that. you should back them up next time instead of blaming my hungry tool or me.
-<!-- this is extremely unprofessional but shows what the code looks like -->
+### Warnings: 
+- wsl isnt supported right now, if you want to run on windows, use cmd, powershell, or windows terminal. Wsl has issues with keytar and system keychains.
+- also its ur fault if my tool eats your files or something like that. you should back them up next time instead of blaming my hungry tool or me.
+- and i dont have a mac so pls report any macos issues if u have one, i just try to make universal code (tested on windows and linux [ubuntu] tho)
+<!-- this is extremely unprofessional but it shows what the code looks like -->
 ## Installation
 ```
 # npm
