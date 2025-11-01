@@ -1,7 +1,7 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## minor release 1.2.0 - 2025-10-21
+## minor release 1.2.0 - 2025-10-31
 ### Changelog: 
 - Add silent mode to reduce console output - literally just add `--silent` to the command
 - add very-verbose mode for extra debugging info - add `--very-verbose` to the command
@@ -11,6 +11,7 @@
 - nice log marker `[ft-to-inv]` for better visibility in console (and to seperate from other jobs you may be running)
 - some better marking of files and functions for ppl that want to contribute or make plugins
 - change some other internal tools for better maintainability and usability
+boo
 <!-- im quite lazy, so i don't update the readme often. -->
 <!-- ill probably do it next release -->
 ### Install:

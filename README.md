@@ -1,4 +1,4 @@
-# FreeTube to Invidious Exporter
+# ft-to-inv
 <p align="center">
   <a href="https://github.com/riki-pedia/ft-to-inv/actions/workflows/ci.yml">
     <img alt='CI status' src="https://github.com/riki-pedia/ft-to-inv/actions/workflows/ci.yml/badge.svg?branch=master" />
