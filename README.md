@@ -51,11 +51,9 @@ await main({
   })
 ```
 ## Quick Start
-After installing, run the first time setup:
+After installing, run the package to begin syncing
 ```
-ft-to-inv --first-time-setup # runs automatically if no config is found
-# then run normally
-ft-to-inv
+ft-to-inv # its really that simple!
 ```
 ## Highlights
 - Automatically detects your FreeTube data directory
@@ -64,6 +62,9 @@ ft-to-inv
 - Can be scheduled to run on a cron schedule
 - Supports environment variables, CLI args, and a config file
 - Dry run mode to check for errors without making changes
+- Retries with exponential backoff
+- Encrypted token storage
+- some other stuff install it to find out
 ### Why should I give you my Invidious token?
 Your Invidious token is only used to authenticate with the Invidious API. It is optional to use the API, you can run in no-sync mode to generate the invidious-import.json file without contacting the API. If you do give me the token, it's encrypted at rest using your system keychain via the keytar package. The encryption is done using a passphrase that you provide, which is stored securely in your system keychain. The passphrase is only used to encrypt and decrypt the token. The default passphrase is "ilikewaffles" + 8 random hex characters. If you want to change the passphrase, you can delete it from your keychain and the tool will prompt you again.
 ### Config 
