@@ -1319,9 +1319,9 @@ octokit@^5.0.0:
     "@octokit/webhooks" "^14.0.0"
 
 ollama@^0.6.0:
-  version "0.6.0"
-  resolved "https://registry.npmjs.org/ollama/-/ollama-0.6.0.tgz"
-  integrity sha512-FHjdU2Ok5x2HZsxPui/MBJZ5J+HzmxoWYa/p9wk736eT+uAhS8nvIICar5YgwlG5MFNjDR6UA5F3RSKq+JseOA==
+  version "0.6.2"
+  resolved "https://registry.yarnpkg.com/ollama/-/ollama-0.6.2.tgz#c53ceb7682217625c8ebc9d91b2bd76b2c3beebf"
+  integrity sha512-VcPZpBuz3kdoJIcyWpiDS1MSDSZKyQPM6f9wi405vdLOB5yZWiQ+m7NSTrYsntQyCp/s/Yy0quKiYerhq7Liog==
   dependencies:
     whatwg-fetch "^3.6.20"
 
