@@ -18,7 +18,7 @@ Takes FreeTube data and exports it to invidious-import.json, where it can be opt
 ### Warnings: 
 - wsl isnt supported right now, if you want to run on windows, use cmd, powershell, or windows terminal. Wsl has issues with keytar and system keychains.
 - also its ur fault if my tool eats your files or something like that. you should back them up next time instead of blaming my hungry tool or me.
-- and i dont have a mac so pls report any macos issues if u have one, i just try to make universal code (tested on windows and linux [ubuntu] tho)
+- and i dont have a mac so pls report any macos issues if you have one (tested on windows 11 and ubuntu noble)
 <!-- this is extremely unprofessional but it shows what the code looks like -->
 ## Installation
 ```
