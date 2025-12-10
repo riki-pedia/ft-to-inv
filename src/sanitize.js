@@ -54,4 +54,4 @@ export async function sanitizeConfig(input) {
   return output
 }
 // just logs whatever is in the console to a file
-logConsoleOutput()
+await logConsoleOutput()

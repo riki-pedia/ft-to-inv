@@ -310,4 +310,4 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
     }
   }
 }
-logConsoleOutput()
+await logConsoleOutput()
