@@ -1,16 +1,16 @@
 import { appendFileSync } from 'fs'
 import chalk from 'chalk'
 import { getGlobalVars } from './args.js'
-let globals = {}
-let LOGS_BOOLEAN = globals.logs || false
+let globals, LOGS_BOOLEAN
 // took these from utils because it wasn't universal, this is the only way
 const consoleOutput = []
 // Sanitize the date to be used in a filename by replacing invalid characters.
 const date = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-')
-const outFile = LOGS_BOOLEAN ? `ft-to-inv-${date}.log` : undefined
+let outFile = `ft-to-inv-log-${date}.txt`
 let timesShown = 0
 // function that takes all of the console output, and logs it to a file
 export async function logConsoleOutput(file = outFile, outputArr = consoleOutput) {
+  outFile = LOGS_BOOLEAN ? outFile : undefined
   globals = await getGlobalVars()
   LOGS_BOOLEAN = globals.logs || false
   if (file === undefined) return
