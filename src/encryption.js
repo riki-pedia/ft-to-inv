@@ -1,6 +1,15 @@
 // src/encryption.js
 import crypto from 'crypto'
-import keytar from 'keytar'
+let keytar
+try {
+  keytar = await import('keytar')
+} catch (e) {
+  // often in headless linux environments like CI, docker, WSL, keytar won't be available
+  console.warn(
+    '[ft-to-inv] ⚠️ Keytar module not found, keychain functionality will be disabled. The error was:',
+    e.message || e
+  )
+}
 import readline from 'readline'
 import { log } from './logs.js'
 import fs from 'fs'
