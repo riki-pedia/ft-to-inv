@@ -373,9 +373,7 @@ let TOKEN,
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH
 let OUTPUT_FILE, OLD_EXPORT_PATH
 let FIRST_TIME_SETUP = false // flag to indicate if we should run the first-time setup
-// this is a false linter error, its used in main()
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-let LOGS_BOOLEAN, LOGS
+let LOGS_BOOLEAN
 
 let PLUGINS, INSTALL, LIST, MARKETPLACE, REMOVE
 let PLAYLISTS, HISTORY, SUBS
@@ -511,14 +509,13 @@ async function getLatestRelease() {
 }
 async function getPassOnAHeadlessMachine() {
   // if keytar fails, we try to get the passphrase from env var
-  // ✨ programming is my passion ✨
-  const badName = resolveConfig(null, {
+  const dontUseKeytar = resolveConfig(null, {
     cliNames: ['--dont-use-keytar'],
     envNames: ['FT_TO_INV_DONT_USE_KEYTAR', 'DONT_USE_KEYTAR', 'FT_TO_INV_CONFIG_DONT_USE_KEYTAR'],
     args: args,
     isFlag: true,
   })
-  if (process.env.FT_INV_KEY && (badName === true || badName === 'true')) {
+  if (process.env.FT_INV_KEY && (dontUseKeytar === true || dontUseKeytar === 'true')) {
     return process.env.FT_INV_KEY
   } else return getPassphrase()
 }
@@ -861,7 +858,6 @@ export async function main(overrides = {}) {
     isFlag: true,
     positionalArgs: ['logs'],
   })
-  LOGS = LOGS_BOOLEAN ? resolve('ft-to-inv-' + Date.now() + '.log') : undefined
   // intended for cases like `ft-to-inv help instance`
   HELPCMD = await resolveConfig('help', {
     config: config,

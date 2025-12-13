@@ -34,7 +34,9 @@
     "test": "node ./src/export.js",
     "release": "node ./scripts/release.js",
     "triage": "node ./scripts/triage.js",
-    "comment": "node ./scripts/commentOnPr.js"
+    "comment": "node ./scripts/commentOnPr.js",
+    "artifact": "node ./scripts/octokit-test.js",
+    "lint": "eslint . --fix"
   },
   "bin": {
     "ft-to-inv": "src/export.js"
@@ -44,6 +46,7 @@
     "cli-progress": "^3.12.0",
     "comment-json": "^4.2.5",
     "dotenv": "^17.2.2",
+    "ft-to-inv": "^1.1.6",
     "keytar": "^7.9.0",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
@@ -51,8 +54,7 @@
     "octokit": "^5.0.0",
     "ora": "^9.0.0",
     "semver": "^7.7.2",
-    "strip-json-comments": "^5.0.3",
-    "ft-to-inv": "^1.1.6"
+    "strip-json-comments": "^5.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",

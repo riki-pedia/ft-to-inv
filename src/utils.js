@@ -118,6 +118,7 @@ export async function postToInvidious(
   instance,
   // this is automatically assumed now, but im keeping the param for compatibility (even though its useless now)
   // this is mainly for my functions because at least one of them passes it (because im lazy and havent refactored it yet)
+  // put this message here at like 1.17, it's now 1.21
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   insecure = false,
   method = 'POST'
