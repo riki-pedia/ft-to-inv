@@ -28,12 +28,6 @@ jobs:
          npm install
          sleep 2
          npm ci
-      - name: install libsecret-1-0 and start dbus i guess
-        run: | 
-          echo "=== apt search thingy ==="
-          sudo apt update -y 
-          sudo apt install -y libsecret-1-0 dbus-x11
-          export $(dbus-launch)
       - name: Create dummy freetube files
         run: |
           mkdir -p ./dummy-ft
@@ -50,16 +44,18 @@ jobs:
         env:
           MOCK_PORT: 9999
           INSTANCE: http://127.0.0.1:9999
-          # i fell asleep on the keyboard to get this token, but it technically works with my "sanitation" (the = and 40ish chars is all you need)
-          TOKEN: abnghjksdhghjukzdbghjkasdbgjkhasdbgukhjasdbgkhjasdbghjadsb=
+          # this is the old token but encrypted with the passphrase below
+          TOKEN: v1:53345a671e8c754d3ee7a07ca3dd1cb5:bd2a9b82164ba72c1ce57d836b980d1a:2c1e74990a2b95e4212c2f72055c6a09:0f4e6cd978d0db58b752c57c1124a778000967fa644799f0f6532cdf39aac2808734fbeefcb9b788426c3cd886f075ac3b81b5cf04f32b09dd2854
           EXPORT_DIR: ./exports
           FREETUBE_DIR: ./dummy-ft
           VERBOSE: true
           INSECURE: true
           DONT_RUN_SETUP: true
           FT_TO_INV_DONT_USE_KEYTAR: true
-          FT_INV_KEY: hhfguyagfiyuawegfiyuawegiyuweagweyuagfewoyuag
+          FT_INV_KEY: apassphraseforci
           LOGS: true
+          VERY_VERBOSE: true
+          CI: true
         run: |
           node .github/test/mock-invidious.js &
           MOCK_PID=$!

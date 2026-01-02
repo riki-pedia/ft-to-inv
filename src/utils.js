@@ -118,6 +118,7 @@ export async function postToInvidious(
   instance,
   // this is automatically assumed now, but im keeping the param for compatibility (even though its useless now)
   // this is mainly for my functions because at least one of them passes it (because im lazy and havent refactored it yet)
+  // put this message here at like 1.17, it's now 1.21
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   insecure = false,
   method = 'POST'
@@ -180,7 +181,7 @@ If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${ins
           }
           if (veryVerbose)
             log(
-              `[very-verbose] Received response: ${body.length <= 100 ? body : 'data too long to display'}, status ${res.statusCode}`
+              `[very-verbose] Received response: ${body.length === 0 ? '(empty response)' : body.length <= 100 ? body : 'data too long to display'}, status ${res.statusCode}`
             )
           resolve({ code: res.statusCode, body })
         })

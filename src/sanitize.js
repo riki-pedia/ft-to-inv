@@ -28,9 +28,44 @@ function sanitizeInstance(instance) {
 
 // Paths
 // all the other functions throw if invalid, so this is the only one that needs to be exported
-export async function sanitizePath(p) {
-  if (typeof p !== 'string') throw new Error('Invalid path: must be a string')
+export function sanitizePath(input) {
+  if (typeof input !== 'string') {
+    throw new Error('Invalid path: must be a string')
+  }
+  const p = input.trim()
+  const segments = p.split(/[\\/]+/)
+
+  if (segments.includes('..')) {
+    throw new Error("Invalid path: contains '..' (security risk, look it up).")
+  }
+  if (p === '') throw new Error('Invalid path: cannot be empty or just whitespace')
+
   return path.resolve(p.replace(/\\/g, '/'))
+}
+
+export function sanitizeFilename(name) {
+  if (typeof name !== 'string') {
+    throw new Error('Invalid filename: must be a string')
+  }
+
+  const trimmed = name.trim()
+  if (!trimmed) {
+    throw new Error('Invalid filename: cannot be empty')
+  }
+
+  if (trimmed.includes('/') || trimmed.includes('\\')) {
+    throw new Error('Invalid filename: must not contain path separators')
+  }
+
+  if (trimmed === '.' || trimmed === '..') {
+    throw new Error('Invalid filename')
+  }
+
+  if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) {
+    throw new Error("Invalid filename: only letters, numbers, '.', '_', and '-' are allowed")
+  }
+
+  return trimmed
 }
 
 // Cron

@@ -49,7 +49,12 @@ const hints = JSON.parse(readFileSync(hintsPath, 'utf-8'))
 import { sanitizeConfig, sanitizePath } from './sanitize.js'
 import { loadPlugins, runHook } from './loader.js'
 import { listInstalled, listStore, installPlugin, removePlugin } from './marketplace.js'
-import { decryptToken, getPassphrase, changePassphraseInKeychain } from './encryption.js'
+import {
+  decryptToken,
+  getPassphrase,
+  changePassphraseInKeychain,
+  migrateToken,
+} from './encryption.js'
 import { fileURLToPath } from 'url'
 const args = process.argv.slice(2)
 // im not typing the whole thing
@@ -342,15 +347,6 @@ async function isExpectedArg(argList = args) {
 
   return true
 }
-async function getToken(tokenArg) {
-  //                       the name is stupid but i can't think of a better one
-  const passphrase = await getPassOnAHeadlessMachine()
-  if (tokenArg.includes(':')) {
-    return await decryptToken(tokenArg, passphrase)
-  } else {
-    return tokenArg
-  }
-}
 
 // -- Globals (to be assigned in bootstrap) --
 //#endregion
@@ -373,9 +369,7 @@ let TOKEN,
 let HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH
 let OUTPUT_FILE, OLD_EXPORT_PATH
 let FIRST_TIME_SETUP = false // flag to indicate if we should run the first-time setup
-// this is a false linter error, its used in main()
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-let LOGS_BOOLEAN, LOGS
+let LOGS_BOOLEAN
 
 let PLUGINS, INSTALL, LIST, MARKETPLACE, REMOVE
 let PLAYLISTS, HISTORY, SUBS
@@ -494,6 +488,9 @@ async function getLatestRelease() {
       repo: 'ft-to-inv',
     })
     const latestTag = response.data.tag_name.replace(/^v/, '')
+    if (semver.gt(currentTag, latestTag)) {
+      return log("looks like you're in a dev environment", { err: 'info' })
+    }
     if (semver.gt(latestTag, currentTag)) {
       log(
         `📣 New release available: ${latestTag} (current: ${currentTag}) 📣 \n You can install it with: \`npm install -g ft-to-inv@${latestTag}\``,
@@ -501,7 +498,7 @@ async function getLatestRelease() {
       )
       return latestTag
     } else {
-      log(`✅ You are running the latest release: ${currentTag}`, { err: 'info' })
+      log(`✅ You are running the latest version: ${currentTag}`, { err: 'info' })
       return currentTag
     }
   } catch (error) {
@@ -511,27 +508,28 @@ async function getLatestRelease() {
 }
 async function getPassOnAHeadlessMachine() {
   // if keytar fails, we try to get the passphrase from env var
-  // ✨ programming is my passion ✨
-  const badName = resolveConfig(null, {
+  const dontUseKeytar = resolveConfig(null, {
     cliNames: ['--dont-use-keytar'],
     envNames: ['FT_TO_INV_DONT_USE_KEYTAR', 'DONT_USE_KEYTAR', 'FT_TO_INV_CONFIG_DONT_USE_KEYTAR'],
     args: args,
     isFlag: true,
   })
-  if (process.env.FT_INV_KEY && (badName === true || badName === 'true')) {
+  if (process.env.FT_INV_KEY && (dontUseKeytar === true || dontUseKeytar === 'true')) {
     return process.env.FT_INV_KEY
-  } else return getPassphrase()
+  } else return getPassphrase({ persist: true })
 }
 async function linuxWarning() {
   // warn about keytar on linux
   const os = detectOs()
   if (os === 'linux') {
     log(
-      `⚠️ Warning: Keytar may not work properly on Linux without libsecret installed. \n try running this: \n \`sudo apt install -y libsecret-1-0\` \n if you run this in a headless machine, it could be broken.`,
-      { err: 'warning' }
-    )
-    log(
-      `If you want to avoid this warning, set the env var FT_TO_INV_DONT_USE_KEYTAR to true. Then set your passphrase in the env var FT_INV_KEY with \n \` export FT_INV_KEY=<your-passphrase>\``,
+      // it either looks ugly here or in the terminal, pick your poison
+      `On linux, the keytar library usually doesn't work due to the lack of a keyring in headless environments.
+[ft-to-inv] You probably need to set the FT_INV_KEY environment variable with your passphrase (see below) to avoid issues.
+[ft-to-inv] try running:
+[ft-to-inv] \`export FT_INV_KEY=your_passphrase_here\` 
+[ft-to-inv] before running the tool, or add it to your shell profie (.bashrc, .zshrc, etc.) or use a .env file with the built-in dotenv support.
+[ft-to-inv] this runs every time on linux, sorry if you have the key set up correctly already.`,
       { err: 'warning' }
     )
   }
@@ -551,7 +549,7 @@ export async function main(overrides = {}) {
   })
   const c = { silent: SILENT }
   setGlobalVars(c)
-  if (!SILENT) log(`ft-to-inv v${version}:`)
+  if (!SILENT) console.log(`ft-to-inv v${version}:`)
   await getLatestRelease()
   await linuxWarning()
   // this NEEDS to run before first time setup so if the pass is too short they wont be stuck in a crash loop like i was while testing with passphrase "h"
@@ -682,8 +680,8 @@ export async function main(overrides = {}) {
     await removePlugin(REMOVE)
     return
   }
-  if (!SILENT && !QUIET) {
-    log('🔌 Loading plugins...')
+  if (!SILENT) {
+    log('🔌 Loading plugins...', { err: 'info' })
   }
   await loadPlugins()
   await runHook('beforeMain', { overrides })
@@ -726,7 +724,33 @@ export async function main(overrides = {}) {
     positionalArgs: ['freetube-dir', 'freetube'],
   })
   FREETUBE_DIR = await sanitizePath(baseFtDir)
-  // this looks trash, if you can make this better please do
+  // token decryption/migration "helper"
+  const getToken = async tokenArg => {
+    //                       the name is stupid but i can't think of a better one
+    const passphrase = await getPassOnAHeadlessMachine()
+    if (tokenArg.includes(':')) {
+      return await decryptToken(tokenArg, passphrase)
+    } else if (SILENT) return tokenArg
+    else {
+      // this is to fix my ci workflow
+      if (!process.env.CI) {
+        const migratePrompt = await prompt(
+          'Detected an unencrypted token. Migrate to encrypted storage? (recommended) (y/n):',
+          // defualt option is yes
+          'y'
+        )
+        if (migratePrompt === 'y') {
+          const newToken = await migrateToken(tokenArg)
+          config.token = newToken
+          log(
+            `[ft-to-inv] I can't update your config file automatically yet (because im lazy). This will probably happen in the\n[ft-to-inv] next minor version of this tool. To stop getting this message, please update the token in your\n[ft-to-inv] config file to the following value:\n 
+          ${newToken}`
+          )
+        }
+        return tokenArg
+      }
+    }
+  }
   const baseToken = await resolveConfig('token', {
     cliNames: ['--token', '-t'],
     envNames: ['FT_TO_INV_CONFIG_TOKEN', 'FT_TO_INV_TOKEN', 'TOKEN'],
@@ -735,7 +759,7 @@ export async function main(overrides = {}) {
     positionalArgs: ['token', 't', 'auth'],
   })
   TOKEN = await getToken(baseToken)
-  // did i seriously forget to remove the debug log :skull:
+
   INSTANCE = await resolveConfig('instance', {
     cliNames: ['--instance', '-i'],
     envNames: ['FT_TO_INV_CONFIG_INSTANCE', 'INSTANCE', 'FT_TO_INV_INSTANCE'],
@@ -861,7 +885,6 @@ export async function main(overrides = {}) {
     isFlag: true,
     positionalArgs: ['logs'],
   })
-  LOGS = LOGS_BOOLEAN ? resolve('ft-to-inv-' + Date.now() + '.log') : undefined
   // intended for cases like `ft-to-inv help instance`
   HELPCMD = await resolveConfig('help', {
     config: config,

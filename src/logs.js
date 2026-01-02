@@ -6,23 +6,28 @@ let globals, LOGS_BOOLEAN
 const consoleOutput = []
 // Sanitize the date to be used in a filename by replacing invalid characters.
 const date = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-')
-let outFile = `ft-to-inv-log-${date}.txt`
+let outFile = `ft-to-inv-log-${date}.log`
 let timesShown = 0
 // function that takes all of the console output, and logs it to a file
 export async function logConsoleOutput(file = outFile, outputArr = consoleOutput) {
-  outFile = LOGS_BOOLEAN ? outFile : undefined
-  globals = await getGlobalVars()
-  LOGS_BOOLEAN = globals.logs || false
-  if (file === undefined) return
-  // Join the array and write it once. Use appendFileSync to add to existing file.
-  const logData = outputArr.join('\n') + '\n'
-  appendFileSync(file, logData)
-  if (timesShown === 0) {
-    console.log(`[ft-to-inv] ✅ Logged console output to ${file}`)
-    timesShown += 1
-  } // Clear the array after writing to prevent writing the same logs multiple times
-  // if this function is called more than once.
-  consoleOutput.length = 0
+  try {
+    globals = await getGlobalVars()
+    LOGS_BOOLEAN = globals.logs || false
+    if (file === undefined || LOGS_BOOLEAN === false) return
+    else {
+      const logData = outputArr.join('\n') + '\n'
+      appendFileSync(file, logData)
+      if (timesShown === 0) {
+        console.log(`[ft-to-inv] ✅ Logged console output to ${file}`)
+        timesShown += 1
+      }
+    }
+  } catch (err) {
+    console.error('[ft-to-inv] ❌ Failed to log console output:', err)
+  } finally {
+    // clear the console output after logging
+    consoleOutput.length = 0
+  }
 }
 /**
  * Logs a message to the console and a provided output array with optional styling.
@@ -33,13 +38,13 @@ export async function logConsoleOutput(file = outFile, outputArr = consoleOutput
  * @param {string} [options.color] - Optional chalk color to style the message.
  */
 export function log(message, options = {}) {
-  const { c = consoleOutput, err = null, color = null } = options
+  const { err = null, color = null } = options
   const timestamp = new Date().toISOString()
   const formattedMessage = `[${timestamp}] ${message}`
   globals = getGlobalVars()
   const quiet = globals.quiet || false
   const silent = globals.silent || false
-  c.push(formattedMessage)
+  consoleOutput.push(formattedMessage)
 
   if (!err && !color) {
     console.log('[ft-to-inv] ' + message)
