@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { sanitizePath } from './sanitize.js'
+import { sanitizeFilename } from './sanitize.js'
 let keytar
 try {
   const _kt = await import('keytar')
@@ -141,7 +141,7 @@ export async function getPassphrase({ persist = true } = {}) {
     // note: i feel like this would be better to write to .env
     if (persist && process.env.FT_INV_KEY_FILE) {
       try {
-        const safePath = sanitizePath(process.env.FT_INV_KEY_FILE)
+        const safePath = sanitizeFilename(process.env.FT_INV_KEY_FILE)
         fs.writeFileSync(path.resolve(safePath), passphrase, { mode: 0o600 })
         log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
       } catch (err) {
@@ -188,7 +188,7 @@ export async function changePassphraseInKeychain() {
     }
     if (process.env.FT_INV_KEY_FILE) {
       try {
-        const safePath = sanitizePath(process.env.FT_INV_KEY_FILE)
+        const safePath = sanitizeFilename(process.env.FT_INV_KEY_FILE)
         fs.writeFileSync(path.resolve(safePath), newPass, { mode: 0o600 })
         log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
         return
@@ -243,7 +243,7 @@ export async function loadToken(token) {
             // persist the successful passphrase when possible
             if (process.env.FT_INV_KEY_FILE) {
               try {
-                const safePath = sanitizePath(process.env.FT_INV_KEY_FILE)
+                const safePath = sanitizeFilename(process.env.FT_INV_KEY_FILE)
                 fs.writeFileSync(path.resolve(safePath), tryAgain, {
                   mode: 0o600,
                 })
