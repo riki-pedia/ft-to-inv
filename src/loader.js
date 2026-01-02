@@ -4,6 +4,7 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { getGlobalVars } from './args.js'
 import { log } from './logs.js'
+import { sanitizePath } from './sanitize.js'
 export const plugins = []
 export const pluginMeta = []
 
@@ -17,7 +18,7 @@ export async function loadPlugins() {
   }
   const dirs = fs
     .readdirSync(pluginsDir)
-    .filter(f => fs.statSync(path.join(pluginsDir, f)).isDirectory())
+    .filter(f => fs.statSync(sanitizePath(path.join(pluginsDir, f))).isDirectory())
   if (dirs.length >= 2) {
     log(`⚠️ You probably shouldn't have multiple plugins running`, { err: 'warning' })
   }
