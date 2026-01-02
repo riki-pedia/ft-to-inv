@@ -732,20 +732,23 @@ export async function main(overrides = {}) {
       return await decryptToken(tokenArg, passphrase)
     } else if (SILENT) return tokenArg
     else {
-      const migratePrompt = await prompt(
-        'Detected an unencrypted token. Migrate to encrypted storage? (recommended) (y/n):',
-        // defualt option is yes
-        'y'
-      )
-      if (migratePrompt === 'y') {
-        const newToken = await migrateToken(tokenArg)
-        config.token = newToken
-        log(
-          `[ft-to-inv] I can't update your config file automatically yet (because im lazy). This will probably happen in the\n[ft-to-inv] next minor version of this tool. To stop getting this message, please update the token in your\n[ft-to-inv] config file to the following value:\n 
-          ${newToken}`
+      // this is to fix my ci workflow
+      if (!process.env.CI) {
+        const migratePrompt = await prompt(
+          'Detected an unencrypted token. Migrate to encrypted storage? (recommended) (y/n):',
+          // defualt option is yes
+          'y'
         )
+        if (migratePrompt === 'y') {
+          const newToken = await migrateToken(tokenArg)
+          config.token = newToken
+          log(
+            `[ft-to-inv] I can't update your config file automatically yet (because im lazy). This will probably happen in the\n[ft-to-inv] next minor version of this tool. To stop getting this message, please update the token in your\n[ft-to-inv] config file to the following value:\n 
+          ${newToken}`
+          )
+        }
+        return tokenArg
       }
-      return tokenArg
     }
   }
   const baseToken = await resolveConfig('token', {
