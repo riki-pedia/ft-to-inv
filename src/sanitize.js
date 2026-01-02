@@ -28,23 +28,17 @@ function sanitizeInstance(instance) {
 
 // Paths
 // all the other functions throw if invalid, so this is the only one that needs to be exported
-export async function sanitizePath(p) {
-  if (typeof p !== 'string') throw new Error('Invalid path: must be a string')
-  if (p.includes('..'))
-    throw new Error(
-      'Invalid path: contains .. (security risk). Please use absolute paths. (like C:/mydir or /home/user/mydir)'
-    )
-  const singleBackslash = /^(?:[^\\]*\\[^\\]*)+$/
-  if (singleBackslash.test(p) && !p.includes('\\'))
-    if (process.platform === 'win32') {
-      // detect the os to see if the user even needs to use backslashes
-      throw new Error( //                                                      escapes to \\ when logged
-        'Invalid path: contains single backslashes. Please use double backslashes (\\\\) or forward slashes (/).\n Your path: ' +
-          p
-      )
-    } else {
-      throw new Error('Invalid path: contains backslashes. Please use forward slashes (/).')
-    }
+export function sanitizePath(input) {
+  if (typeof input !== 'string') {
+    throw new Error('Invalid path: must be a string')
+  }
+  const p = input.trim()
+  const segments = p.split(/[\\/]+/)
+
+  if (segments.includes('..')) {
+    throw new Error("Invalid path: contains '..' (security risk, look it up).")
+  }
+
   return path.resolve(p.replace(/\\/g, '/'))
 }
 
