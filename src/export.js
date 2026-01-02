@@ -680,8 +680,8 @@ export async function main(overrides = {}) {
     await removePlugin(REMOVE)
     return
   }
-  if (!SILENT && !QUIET) {
-    log('🔌 Loading plugins...')
+  if (!SILENT) {
+    log('🔌 Loading plugins...', { err: 'info' })
   }
   await loadPlugins()
   await runHook('beforeMain', { overrides })

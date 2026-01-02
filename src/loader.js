@@ -12,14 +12,14 @@ export async function loadPlugins() {
   const pluginsDir = path.resolve('./plugins')
   if (!fs.existsSync(pluginsDir)) {
     const conf = await getGlobalVars()
-    if (!conf.silent) log(' ℹ️ No plugins found')
+    if (!conf.silent) log(' ℹ️ No plugins found', { err: 'info' })
     return
   }
   const dirs = fs
     .readdirSync(pluginsDir)
     .filter(f => fs.statSync(path.join(pluginsDir, f)).isDirectory())
   if (dirs.length >= 2) {
-    console.warn(`[ft-to-inv] ⚠️ You probably shouldn't have multiple plugins running`)
+    log(`⚠️ You probably shouldn't have multiple plugins running`, { err: 'warning' })
   }
   for (const dir of dirs) {
     const manifestPath = path.join(pluginsDir, dir, `${dir}.json`)

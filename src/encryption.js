@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { sanitizePath } from './sanitize.js'
 let keytar
 try {
   const _kt = await import('keytar')
@@ -140,8 +141,9 @@ export async function getPassphrase({ persist = true } = {}) {
     // note: i feel like this would be better to write to .env
     if (persist && process.env.FT_INV_KEY_FILE) {
       try {
-        fs.writeFileSync(path.resolve(process.env.FT_INV_KEY_FILE), passphrase, { mode: 0o600 })
-        log(`✅ Passphrase saved to file ${process.env.FT_INV_KEY_FILE}`, { err: 'info' })
+        const safePath = sanitizePath(process.env.FT_INV_KEY_FILE)
+        fs.writeFileSync(path.resolve(safePath), passphrase, { mode: 0o600 })
+        log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
       } catch (err) {
         log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'warning' })
       }
@@ -186,8 +188,9 @@ export async function changePassphraseInKeychain() {
     }
     if (process.env.FT_INV_KEY_FILE) {
       try {
-        fs.writeFileSync(path.resolve(process.env.FT_INV_KEY_FILE), newPass, { mode: 0o600 })
-        log(`✅ Passphrase saved to file ${process.env.FT_INV_KEY_FILE}`, { err: 'info' })
+        const safePath = sanitizePath(process.env.FT_INV_KEY_FILE)
+        fs.writeFileSync(path.resolve(safePath), newPass, { mode: 0o600 })
+        log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
         return
       } catch (err) {
         log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'error' })
@@ -240,10 +243,11 @@ export async function loadToken(token) {
             // persist the successful passphrase when possible
             if (process.env.FT_INV_KEY_FILE) {
               try {
-                fs.writeFileSync(path.resolve(process.env.FT_INV_KEY_FILE), tryAgain, {
+                const safePath = sanitizePath(process.env.FT_INV_KEY_FILE)
+                fs.writeFileSync(path.resolve(safePath), tryAgain, {
                   mode: 0o600,
                 })
-                log(`✅ Passphrase saved to file ${process.env.FT_INV_KEY_FILE}`, { err: 'info' })
+                log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
               } catch (err) {
                 log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'warning' })
               }
