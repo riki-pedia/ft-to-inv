@@ -1,12 +1,14 @@
-// src/encryption.js
 import crypto from 'crypto'
 let keytar
 try {
-  keytar = await import('keytar')
+  const _kt = await import('keytar')
+  // Normalize ESM/CJS interop: prefer the real API object from default or module.exports.
+  keytar = _kt && (_kt.default || _kt['module.exports'] || _kt)
 } catch (e) {
   // often in headless linux environments like CI, docker, WSL, keytar won't be available
+  keytar = null
   console.warn(
-    '[ft-to-inv] ⚠️ Keytar module not found, keychain functionality will be disabled. The error was:',
+    '[ft-to-inv] ⚠️ Keytar module not found, keychain functionality will be disabled. Falling back to environment variables FT_INV_KEY / FT_INV_KEY_FILE. The error was:',
     e.message || e
   )
 }
@@ -76,41 +78,42 @@ export async function decryptToken(enc, passphrase) {
 /**
  * Try to get the passphrase from keytar, fallback to prompt or env var.
  */
-export async function getPassphrase() {
+export async function getPassphrase({ persist = true } = {}) {
   let passphrase
-
-  // Try system keychain first
-  try {
-    passphrase = await keytar.getPassword(SERVICE, ACCOUNT)
-    if (passphrase) return passphrase
-  } catch (e) {
-    log(`Keychain access failed, falling back to alternatives, ${e.message || e}`, {
-      err: 'warning',
-    })
-  }
-
-  // Try environment variables
+  // Prefer environment variables first (explicit is better than OS keychain)
   if (process.env.FT_INV_KEY) {
     passphrase = process.env.FT_INV_KEY
   } else if (process.env.FT_INV_KEY_FILE) {
     try {
       passphrase = fs.readFileSync(path.resolve(process.env.FT_INV_KEY_FILE), 'utf8').trim()
     } catch (err) {
-      log(`Failed to read key file: ${err.message || err}`, { err: 'error' })
+      log(`Failed to read key file: ${err.message || err}`, { err: 'warning' })
     }
   }
 
-  // If we got a passphrase from env/file, validate and store it
   if (passphrase) {
     if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
       throw new Error('Passphrase from environment is too short')
     }
-    try {
-      await keytar.setPassword(SERVICE, ACCOUNT, passphrase)
-    } catch (err) {
-      log(`Failed to store passphrase in keychain: ${err.message || err}`, { err: 'warning' })
+    // If keytar is available, store it there for user convenience
+    if (persist && keytar && keytar.setPassword) {
+      try {
+        await keytar.setPassword(SERVICE, ACCOUNT, passphrase)
+      } catch (err) {
+        log(`Failed to store passphrase in keychain: ${err.message || err}`, { err: 'warning' })
+      }
     }
     return passphrase
+  }
+
+  // Next, try system keychain if present
+  if (keytar && keytar.getPassword) {
+    try {
+      passphrase = await keytar.getPassword(SERVICE, ACCOUNT)
+      if (passphrase) return passphrase
+    } catch (e) {
+      log(`Keychain access failed, falling back to prompt, ${e.message || e}`, { err: 'warning' })
+    }
   }
 
   // Last resort: prompt user if not headless
@@ -133,11 +136,27 @@ export async function getPassphrase() {
         err: 'warning',
       })
     }
-    try {
-      await keytar.setPassword(SERVICE, ACCOUNT, passphrase)
-    } catch (err) {
-      log(`Failed to store passphrase in keychain: ${err.message || err}`, { err: 'warning' })
+    // Try to persist it: prefer writing to FT_INV_KEY_FILE if provided, otherwise use keytar when available
+    // note: i feel like this would be better to write to .env
+    if (persist && process.env.FT_INV_KEY_FILE) {
+      try {
+        fs.writeFileSync(path.resolve(process.env.FT_INV_KEY_FILE), passphrase, { mode: 0o600 })
+        log(`✅ Passphrase saved to file ${process.env.FT_INV_KEY_FILE}`, { err: 'info' })
+      } catch (err) {
+        log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'warning' })
+      }
+    } else if (persist && keytar && keytar.setPassword) {
+      try {
+        await keytar.setPassword(SERVICE, ACCOUNT, passphrase)
+      } catch (err) {
+        log(`Failed to store passphrase in keychain: ${err.message || err}`, { err: 'warning' })
+      }
+    } else {
+      log('No keytar available; please set FT_INV_KEY or FT_INV_KEY_FILE to persist passphrase.', {
+        err: 'warning',
+      })
     }
+
     return passphrase
   }
 
@@ -148,13 +167,37 @@ export async function getPassphrase() {
 
 export async function changePassphraseInKeychain() {
   try {
-    await keytar.deletePassword(SERVICE, ACCOUNT)
-    const newPass = await prompt('Enter new passphrase: ', null, true)
+    // If keytar is available, keep previous behavior
+    if (keytar && keytar.deletePassword && keytar.setPassword) {
+      await keytar.deletePassword(SERVICE, ACCOUNT)
+      const newPass = await prompt('Enter new passphrase: ')
+      if (newPass.length < MIN_PASSPHRASE_LENGTH) {
+        throw new Error(`New passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters long`)
+      }
+      await keytar.setPassword(SERVICE, ACCOUNT, newPass)
+      log('✅ Passphrase changed successfully in keychain.', { err: 'info' })
+      return
+    }
+
+    // Fallback when keytar isn't available: prompt and persist to FT_INV_KEY_FILE if configured
+    const newPass = await prompt('Enter new passphrase: ')
     if (newPass.length < MIN_PASSPHRASE_LENGTH) {
       throw new Error(`New passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters long`)
     }
-    await keytar.setPassword(SERVICE, ACCOUNT, newPass)
-    log('✅ Passphrase changed successfully in keychain.', { err: 'info' })
+    if (process.env.FT_INV_KEY_FILE) {
+      try {
+        fs.writeFileSync(path.resolve(process.env.FT_INV_KEY_FILE), newPass, { mode: 0o600 })
+        log(`✅ Passphrase saved to file ${process.env.FT_INV_KEY_FILE}`, { err: 'info' })
+        return
+      } catch (err) {
+        log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'error' })
+        throw err
+      }
+    }
+
+    log('No keychain available. Set FT_INV_KEY or FT_INV_KEY_FILE to persist the passphrase.', {
+      err: 'warning',
+    })
   } catch (err) {
     log(`Failed to change passphrase: ${err.message || err}`, { err: 'error' })
     // this is dumb and i dont reccomend it, but im too lazy to refactor right now
@@ -164,21 +207,15 @@ export async function changePassphraseInKeychain() {
 /**
  * Encrypt and rewrite plaintext tokens in config.
  */
-export async function migrateToken(configPath, config) {
-  if (typeof config.token !== 'string' || config.token.includes(':')) {
-    return config // already encrypted or invalid
+export async function migrateToken(token) {
+  if (typeof token !== 'string' || token.includes(':')) {
+    return token // already encrypted or invalid
   }
 
-  log('⚠️  Found plaintext token in config. Migrating...', { err: 'warning' })
+  log('Migrating plaintext token to encrypted storage...', { err: 'info' })
   const passphrase = await getPassphrase()
-  const encrypted = encryptToken(config.token, passphrase)
-  config.token = encrypted
-
-  // Save back to file
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
-  log('✅ Token encrypted and config updated.', { err: 'info' })
-
-  return config
+  const encrypted = encryptToken(token, passphrase)
+  return encrypted
 }
 
 /**
@@ -190,9 +227,41 @@ export async function loadToken(token) {
 
   // Encrypted token
   if (raw.includes(':')) {
-    const passphrase = await getPassphrase()
-    const decrypted = decryptToken(raw, passphrase)
-    if (!decrypted) throw new Error('Failed to decrypt token. Wrong key?')
+    // When decrypting, avoid persisting the passphrase until decryption succeeds
+    const passphrase = await getPassphrase({ persist: false })
+    const decrypted = await decryptToken(raw, passphrase)
+    if (!decrypted) {
+      // give user one more chance interactively if available
+      if (!process.env.CI && process.stdout.isTTY) {
+        const tryAgain = await prompt('Decryption failed. Re-enter passphrase: ')
+        if (tryAgain && tryAgain.length >= MIN_PASSPHRASE_LENGTH) {
+          const reDecrypted = await decryptToken(raw, tryAgain)
+          if (reDecrypted) {
+            // persist the successful passphrase when possible
+            if (process.env.FT_INV_KEY_FILE) {
+              try {
+                fs.writeFileSync(path.resolve(process.env.FT_INV_KEY_FILE), tryAgain, {
+                  mode: 0o600,
+                })
+                log(`✅ Passphrase saved to file ${process.env.FT_INV_KEY_FILE}`, { err: 'info' })
+              } catch (err) {
+                log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'warning' })
+              }
+            } else if (keytar && keytar.setPassword) {
+              try {
+                await keytar.setPassword(SERVICE, ACCOUNT, tryAgain)
+              } catch (err) {
+                log(`Failed to store passphrase in keychain: ${err.message || err}`, {
+                  err: 'warning',
+                })
+              }
+            }
+            return reDecrypted
+          }
+        }
+      }
+      throw new Error('Failed to decrypt token. Wrong key?')
+    }
     return decrypted
   }
 

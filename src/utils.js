@@ -181,7 +181,7 @@ If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${ins
           }
           if (veryVerbose)
             log(
-              `[very-verbose] Received response: ${body.length <= 100 ? body : 'data too long to display'}, status ${res.statusCode}`
+              `[very-verbose] Received response: ${body.length === 0 ? '(empty response)' : body.length <= 100 ? body : 'data too long to display'}, status ${res.statusCode}`
             )
           resolve({ code: res.statusCode, body })
         })

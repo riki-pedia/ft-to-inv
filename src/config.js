@@ -382,3 +382,11 @@ export function loadConfig(conf) {
 
   return merged
 }
+export default {
+  loadConfig,
+  runFirstTimeSetup,
+  resolvePaths,
+  detectHttps,
+  prompt,
+  getEnv,
+}

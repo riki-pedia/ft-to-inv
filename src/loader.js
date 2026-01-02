@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { pathToFileURL } from 'url'
 import { getGlobalVars } from './args.js'
+import { log } from './logs.js'
 export const plugins = []
 export const pluginMeta = []
 
@@ -10,7 +11,8 @@ export async function loadPlugins() {
   // moving this log to export.js
   const pluginsDir = path.resolve('./plugins')
   if (!fs.existsSync(pluginsDir)) {
-    console.log('[ft-to-inv] ℹ️ No plugins found')
+    const conf = await getGlobalVars()
+    if (!conf.silent) log(' ℹ️ No plugins found')
     return
   }
   const dirs = fs
