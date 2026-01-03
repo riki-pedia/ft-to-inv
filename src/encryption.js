@@ -117,6 +117,10 @@ export async function getPassphrase({ persist = true } = {}) {
     }
   }
 
+  if (process.env.FT_INV_KEY) {
+    return process.env.FT_INV_KEY
+  }
+
   // Last resort: prompt user if not headless
   if (!process.env.CI && process.stdout.isTTY) {
     passphrase = await prompt('Enter a passphrase to secure your token: ')
