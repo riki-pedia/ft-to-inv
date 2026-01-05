@@ -64,10 +64,18 @@ async function main() {
   run('npm publish --registry https://npm.pkg.github.com')
 
   // --- Step 2: publish to npmjs.org ---
-  pkg.name = 'ft-to-inv'
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2))
-  run('npm publish --registry https://registry.npmjs.org')
-
+  try {
+    pkg.name = 'ft-to-inv'
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2))
+    run('npm publish --registry https://registry.npmjs.org')
+  } catch (e) {
+    // npm has a BIG thing about security, it makes me login once a day
+    console.warn('npm publish failed, trying npm login first. the error was:', e)
+    run('npm login')
+    pkg.name = 'ft-to-inv'
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2))
+    run('npm publish --registry https://registry.npmjs.org')
+  }
   // --- Step 3: git tag + push ---
   run(`git tag v${version}`)
   try {

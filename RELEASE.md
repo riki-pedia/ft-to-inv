@@ -1,9 +1,11 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## major release 2.0.1 - 2026-01-3
+## patch release 2.0.2 - 2026-01-4
 ### Changelog: 
-- fix a bug where the tool still makes you enter your passphrase when you have FT_INV_KEY set
+- fix ugly log during the spinners
+- refactor log function to support both 'err' and 'level' options for backwards compatibility
+- updated dependencies
 ### Breaking Changes:
 this is a bugfix
 <!-- im quite lazy, so i don't update the readme often. -->
