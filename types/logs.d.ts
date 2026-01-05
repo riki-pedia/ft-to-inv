@@ -1,12 +1,7 @@
-export interface LogEntry {
-  timestamp: Date
-  level: 'info' | 'warn' | 'error'
-  message: string
+export interface LogOptions {
+  color?: 'red' | 'green' | 'yellow' | 'blue' | 'magenta' | 'cyan' | 'white'
+  level?: 'info' | 'warn' | 'error'
 }
-
 export interface Logger {
-  log(entry: LogEntry): void
-}
-export interface fileLog {
-  logConsoleOutput(entry: LogEntry): void
+  log(message: string, options?: LogOptions): void
 }

@@ -34,7 +34,7 @@ try {
   regis = JSON.parse(registryData)
 } catch (err) {
   log(`Failed to load or parse registry from ${registryUrl}: ${err.message || err}`, {
-    err: 'error',
+    level: 'error',
   })
   // catch then throw???
   throw err
@@ -68,12 +68,12 @@ export async function installPlugin(name, registry = regis) {
       const scriptDest = path.join(pluginDir, `${name}.js`)
       const json = await fetchText(plugin.json)
       await verifyPlugin(plugin.json, plugin.jsonSha).catch(err => {
-        log(`Failed to verify ${plugin.json}: ${err.message || err}`, { err: 'error' })
+        log(`Failed to verify ${plugin.json}: ${err.message || err}`, { level: 'error' })
         hasNoErrors = false
       })
       const js = await fetchText(plugin.script)
       await verifyPlugin(plugin.script, plugin.scriptSha).catch(err => {
-        log(`Failed to verify ${plugin.script}: ${err.message || err}`, { err: 'error' })
+        log(`Failed to verify ${plugin.script}: ${err.message || err}`, { level: 'error' })
         hasNoErrors = false
       })
       if (hasNoErrors === true) {
@@ -82,14 +82,14 @@ export async function installPlugin(name, registry = regis) {
         fs.writeFileSync(scriptDest, js)
       }
     } catch (error) {
-      log(`Failed to install ${plugin.name}: ${error.message || error}`, { err: 'error' })
+      log(`Failed to install ${plugin.name}: ${error.message || error}`, { level: 'error' })
     }
   } else if (plugin.url && plugin.sha256) {
     // legacy format
     const scriptDest = path.join(pluginDir, `${name}.js`)
     const js = await fetchText(plugin.url)
     await verifyPlugin(plugin.url, plugin.sha256 + 1).catch(err => {
-      log(`Failed to verify ${plugin.url}: ${err.message || err}`, { err: 'error' })
+      log(`Failed to verify ${plugin.url}: ${err.message || err}`, { level: 'error' })
       hasNoErrors = false
     })
     if (hasNoErrors === true) {

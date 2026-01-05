@@ -70,8 +70,8 @@ export async function decryptToken(enc, passphrase) {
     let decrypted = decipher.update(data, 'hex', 'utf8')
     decrypted += decipher.final('utf8')
     return decrypted
-  } catch (err) {
-    log(`Decryption failed: ${err.message}`, { err: 'error' })
+  } catch (error) {
+    log(`Decryption failed: ${error.message}`, { level: 'error' })
     return null
   }
 }
@@ -87,8 +87,8 @@ export async function getPassphrase({ persist = true } = {}) {
   } else if (process.env.FT_INV_KEY_FILE) {
     try {
       passphrase = fs.readFileSync(path.resolve(process.env.FT_INV_KEY_FILE), 'utf8').trim()
-    } catch (err) {
-      log(`Failed to read key file: ${err.message || err}`, { err: 'warning' })
+    } catch (e) {
+      log(`Failed to read key file: ${e.message || e}`, { level: 'warning' })
     }
   }
 
@@ -100,8 +100,8 @@ export async function getPassphrase({ persist = true } = {}) {
     if (persist && keytar && keytar.setPassword) {
       try {
         await keytar.setPassword(SERVICE, ACCOUNT, passphrase)
-      } catch (err) {
-        log(`Failed to store passphrase in keychain: ${err.message || err}`, { err: 'warning' })
+      } catch (e) {
+        log(`Failed to store passphrase in keychain: ${e.message || e}`, { level: 'warning' })
       }
     }
     return passphrase
@@ -113,7 +113,7 @@ export async function getPassphrase({ persist = true } = {}) {
       passphrase = await keytar.getPassword(SERVICE, ACCOUNT)
       if (passphrase) return passphrase
     } catch (e) {
-      log(`Keychain access failed, falling back to prompt, ${e.message || e}`, { err: 'warning' })
+      log(`Keychain access failed, falling back to prompt, ${e.message || e}`, { level: 'warning' })
     }
   }
 
@@ -138,7 +138,7 @@ export async function getPassphrase({ persist = true } = {}) {
     if (!passphrase) {
       passphrase = 'ilikewaffles' + crypto.randomBytes(8).toString('hex')
       log('⚠️  No passphrase entered, generated one automatically. You should change this later.', {
-        err: 'warning',
+        level: 'warning',
       })
     }
     // Try to persist it: prefer writing to FT_INV_KEY_FILE if provided, otherwise use keytar when available
@@ -147,19 +147,19 @@ export async function getPassphrase({ persist = true } = {}) {
       try {
         const safePath = sanitizeFilename(process.env.FT_INV_KEY_FILE)
         fs.writeFileSync(path.resolve(safePath), passphrase, { mode: 0o600 })
-        log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
-      } catch (err) {
-        log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'warning' })
+        log(`✅ Passphrase saved to file ${safePath}`, { level: 'info' })
+      } catch (e) {
+        log(`Failed to write passphrase to file: ${e.message || e}`, { level: 'warning' })
       }
     } else if (persist && keytar && keytar.setPassword) {
       try {
         await keytar.setPassword(SERVICE, ACCOUNT, passphrase)
-      } catch (err) {
-        log(`Failed to store passphrase in keychain: ${err.message || err}`, { err: 'warning' })
+      } catch (e) {
+        log(`Failed to store passphrase in keychain: ${e.message || e}`, { level: 'warning' })
       }
     } else {
       log('No keytar available; please set FT_INV_KEY or FT_INV_KEY_FILE to persist passphrase.', {
-        err: 'warning',
+        level: 'warning',
       })
     }
 
@@ -181,7 +181,7 @@ export async function changePassphraseInKeychain() {
         throw new Error(`New passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters long`)
       }
       await keytar.setPassword(SERVICE, ACCOUNT, newPass)
-      log('✅ Passphrase changed successfully in keychain.', { err: 'info' })
+      log('✅ Passphrase changed successfully in keychain.', { level: 'info' })
       return
     }
 
@@ -194,21 +194,21 @@ export async function changePassphraseInKeychain() {
       try {
         const safePath = sanitizeFilename(process.env.FT_INV_KEY_FILE)
         fs.writeFileSync(path.resolve(safePath), newPass, { mode: 0o600 })
-        log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
+        log(`✅ Passphrase saved to file ${safePath}`, { level: 'info' })
         return
-      } catch (err) {
-        log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'error' })
-        throw err
+      } catch (e) {
+        log(`Failed to write passphrase to file: ${e.message || e}`, { level: 'error' })
+        throw e
       }
     }
 
     log('No keychain available. Set FT_INV_KEY or FT_INV_KEY_FILE to persist the passphrase.', {
-      err: 'warning',
+      level: 'warning',
     })
-  } catch (err) {
-    log(`Failed to change passphrase: ${err.message || err}`, { err: 'error' })
+  } catch (error) {
+    log(`Failed to change passphrase: ${error.message || error}`, { level: 'error' })
     // this is dumb and i dont reccomend it, but im too lazy to refactor right now
-    throw err
+    throw error
   }
 }
 /**
@@ -219,7 +219,7 @@ export async function migrateToken(token) {
     return token // already encrypted or invalid
   }
 
-  log('Migrating plaintext token to encrypted storage...', { err: 'info' })
+  log('Migrating plaintext token to encrypted storage...', { level: 'info' })
   const passphrase = await getPassphrase()
   const encrypted = encryptToken(token, passphrase)
   return encrypted
@@ -251,16 +251,16 @@ export async function loadToken(token) {
                 fs.writeFileSync(path.resolve(safePath), tryAgain, {
                   mode: 0o600,
                 })
-                log(`✅ Passphrase saved to file ${safePath}`, { err: 'info' })
-              } catch (err) {
-                log(`Failed to write passphrase to file: ${err.message || err}`, { err: 'warning' })
+                log(`✅ Passphrase saved to file ${safePath}`, { level: 'info' })
+              } catch (e) {
+                log(`Failed to write passphrase to file: ${e.message || e}`, { level: 'warning' })
               }
             } else if (keytar && keytar.setPassword) {
               try {
                 await keytar.setPassword(SERVICE, ACCOUNT, tryAgain)
-              } catch (err) {
-                log(`Failed to store passphrase in keychain: ${err.message || err}`, {
-                  err: 'warning',
+              } catch (e) {
+                log(`Failed to store passphrase in keychain: ${e.message || e}`, {
+                  level: 'warning',
                 })
               }
             }
@@ -274,7 +274,7 @@ export async function loadToken(token) {
   }
 
   // Plaintext token (legacy)
-  log('⚠️ Using plaintext token. Run `ft-to-inv encrypt-token` to secure it.', { err: 'warning' })
+  log('⚠️ Using plaintext token. Run `ft-to-inv encrypt-token` to secure it.', { level: 'warning' })
   return raw
 }
 

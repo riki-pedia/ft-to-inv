@@ -422,7 +422,7 @@ function stripDir(p) {
   if (ft === ex) {
     log(
       '⚠️ Warning: FreeTube directory and export directory are the same, path shortening may be ambiguous.',
-      { err: 'warning' }
+      { level: 'warning' }
     )
   }
   if (norm.startsWith(ft)) return norm.replace(ft, '<FreeTubeDir>')
@@ -456,7 +456,7 @@ async function maybeSchedule() {
     if (timesShown === 0) {
       console.log(`[ft-to-inv] ⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`)
       console.log('[ft-to-inv] Press Ctrl+C to exit')
-      log('Logs will only be saved for the initial run.', { err: 'warning' })
+      log('Logs will only be saved for the initial run.', { level: 'warning' })
       timesShown++
     }
     // run once
@@ -468,7 +468,7 @@ async function maybeSchedule() {
     cron.schedule(CRON_SCHEDULE, async () => {
       log(`🔄 Running scheduled sync at ${new Date().toLocaleString()}`)
       await main().catch(err => {
-        log(`❌ Fatal error: ${err}`, { err: 'error' })
+        log(`❌ Fatal error: ${err}`, { level: 'error' })
         process.exit(1)
       })
     })
@@ -481,7 +481,7 @@ const currentTag = version
 async function getLatestRelease() {
   try {
     if (SILENT) return null
-    log('Checking for updates...', { err: 'info' })
+    log('Checking for updates...', { level: 'info' })
     const octokit = new Octokit() //       took 3 releases to figure out {} instead of ${} is an octokit thing
     const response = await octokit.request('GET /repos/{owner}/{repo}/releases/latest', {
       owner: 'riki-pedia',
@@ -489,20 +489,20 @@ async function getLatestRelease() {
     })
     const latestTag = response.data.tag_name.replace(/^v/, '')
     if (semver.gt(currentTag, latestTag)) {
-      return log("looks like you're in a dev environment", { err: 'info' })
+      return log("looks like you're in a dev environment", { level: 'info' })
     }
     if (semver.gt(latestTag, currentTag)) {
       log(
         `📣 New release available: ${latestTag} (current: ${currentTag}) 📣 \n You can install it with: \`npm install -g ft-to-inv@${latestTag}\``,
-        { err: 'info' }
+        { level: 'info' }
       )
       return latestTag
     } else {
-      log(`✅ You are running the latest version: ${currentTag}`, { err: 'info' })
+      log(`✅ You are running the latest version: ${currentTag}`, { level: 'info' })
       return currentTag
     }
   } catch (error) {
-    log(`❌ Error fetching latest release: ${error}`, { err: 'error' })
+    log(`❌ Error fetching latest release: ${error}`, { level: 'error' })
     return null
   }
 }
@@ -530,7 +530,7 @@ async function linuxWarning() {
 [ft-to-inv] \`export FT_INV_KEY=your_passphrase_here\` 
 [ft-to-inv] before running the tool, or add it to your shell profie (.bashrc, .zshrc, etc.) or use a .env file with the built-in dotenv support.
 [ft-to-inv] this runs every time on linux, sorry if you have the key set up correctly already.`,
-      { err: 'warning' }
+      { level: 'warning' }
     )
   }
 }
@@ -607,7 +607,7 @@ export async function main(overrides = {}) {
     ]
   )
   if (dontRunSetup === true) {
-    log('⚠️ Warning: Skipping setup due to setting DONT_RUN_SETUP', { err: 'warning' })
+    log('⚠️ Warning: Skipping setup due to setting DONT_RUN_SETUP', { level: 'warning' })
   }
   if ((isFirstRun && dontRunSetup !== true) || FIRST_TIME_SETUP === true) {
     config = await runFirstTimeSetup()
@@ -681,7 +681,7 @@ export async function main(overrides = {}) {
     return
   }
   if (!SILENT) {
-    log('🔌 Loading plugins...', { err: 'info' })
+    log('🔌 Loading plugins...', { level: 'info' })
   }
   await loadPlugins()
   await runHook('beforeMain', { overrides })
@@ -1255,7 +1255,7 @@ Aliases:
  FT_TO_INV_CONFIG_SILENT, SILENT, FT_TO_INV_SILENT
  Suppresses all console output, including errors. Useful for running the tool in the background or as a cron job.
  `)
-    } else return log(`❌ Unknown help topic: ${HELPCMD || h}`, { err: 'error' })
+    } else return log(`❌ Unknown help topic: ${HELPCMD || h}`, { level: 'error' })
     return
   }
   //#endregion
@@ -1269,14 +1269,14 @@ Aliases:
         freetube_dir: FREETUBE_DIR,
         cron_schedule: CRON_SCHEDULE,
       })
-    } catch (err) {
-      log(`❌ ${err.message}`, { err: 'error' })
+    } catch (e) {
+      log(`❌ ${e.message || e}`, { level: 'error' })
       process.exit(1)
     }
 
     await isExpectedArg(args)
   } else {
-    log('⚠️ Bypassing sanitization and argument checks (overrides present)', { err: 'warning' })
+    log('⚠️ Bypassing sanitization and argument checks (overrides present)', { level: 'warning' })
     config = overrides // trust caller to pass in already-clean values
   }
   // these files are always those names, not taking args for them
@@ -1285,35 +1285,35 @@ Aliases:
   HISTORY_PATH = join(FREETUBE_DIR, 'history.db')
   PLAYLIST_PATH = join(FREETUBE_DIR, 'playlists.db')
   if (QUIET && VERBOSE) {
-    log('❌ Conflicting options: --quiet and --verbose', { err: 'error' })
+    log('❌ Conflicting options: --quiet and --verbose', { level: 'error' })
     process.exit(1)
   }
   // Validate required files
   for (const f of [HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH]) {
     if (!existsSync(f)) {
-      log(`❌ Required file missing: ${f}`, { err: 'error' })
+      log(`❌ Required file missing: ${f}`, { level: 'error' })
       // cant believe i still had the old consoleOutput system here
       log(
         `${HISTORY_PATH}, ${PLAYLIST_PATH}, ${PROFILE_PATH}, ${EXPORT_DIR}, ${OLD_EXPORT_PATH}, ${FREETUBE_DIR} (logged for debugging)`
       )
-      log(`❌ Required file missing: ${f}`, { err: 'error' })
+      log(`❌ Required file missing: ${f}`, { level: 'error' })
       process.exit(1)
     }
   }
   if (!TOKEN && !DRY_RUN && !NOSYNC) {
-    log('❌ No token specified.\n See ft-to-inv help token for more info.', { err: 'error' })
+    log('❌ No token specified.\n See ft-to-inv help token for more info.', { level: 'error' })
     process.exit(1)
   }
   if (VERBOSE) {
-    log(`🌐 Instance: ${INSTANCE}`, { err: 'info' })
-    log(` Paths:`, { err: 'info' })
-    log(`   FreeTube data directory: ${FREETUBE_DIR}`, { err: 'info' })
-    log(`   Export directory: ${EXPORT_DIR}`, { err: 'info' })
-    log(`   History: ${stripDir(HISTORY_PATH)}`, { err: 'info' })
-    log(`   Playlists: ${stripDir(PLAYLIST_PATH)}`, { err: 'info' })
-    log(`   Profiles: ${stripDir(PROFILE_PATH)}`, { err: 'info' })
-    log(`   Export → ${stripDir(OUTPUT_FILE)}`, { err: 'info' })
-    log(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`, { err: 'info' })
+    log(`🌐 Instance: ${INSTANCE}`, { level: 'info' })
+    log(` Paths:`, { level: 'info' })
+    log(`   FreeTube data directory: ${FREETUBE_DIR}`, { level: 'info' })
+    log(`   Export directory: ${EXPORT_DIR}`, { level: 'info' })
+    log(`   History: ${stripDir(HISTORY_PATH)}`, { level: 'info' })
+    log(`   Playlists: ${stripDir(PLAYLIST_PATH)}`, { level: 'info' })
+    log(`   Profiles: ${stripDir(PROFILE_PATH)}`, { level: 'info' })
+    log(`   Export → ${stripDir(OUTPUT_FILE)}`, { level: 'info' })
+    log(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`, { level: 'info' })
   }
   await runHook('beforeSync', { overrides })
   // Now call sync
@@ -1326,7 +1326,7 @@ function certErrorHint(err) {
   if (message.includes('unable to verify the first certificate')) {
     log(
       '⚠️ This may be due to an invalid or self-signed certificate. Try running with --use-system-ca or setting the NODE_EXTRA_CA_CERTS environment variable.',
-      { err: 'warning' }
+      { level: 'warning' }
     )
   } else return
 }
@@ -1400,7 +1400,7 @@ export async function sync() {
     subscriptionsjson = {}
   }
 
-  if (VERBOSE) log(`Calculating diffs...`, { err: 'info' })
+  if (VERBOSE) log(`Calculating diffs...`, { level: 'info' })
 
   const safeOldPlaylists = (old.playlists || []).filter(
     op => op && typeof op.title === 'string' && Array.isArray(op.videos)
@@ -1551,17 +1551,17 @@ export async function sync() {
     if (!HISTORY) {
       log(`Found ${newHistory.length} new video${useSVideo} to sync`, { color: 'green' })
     } else {
-      log('Ignoring history, not calculating new videos to sync', { err: 'warning' })
+      log('Ignoring history, not calculating new videos to sync', { level: 'warning' })
     }
     if (!SUBS) {
       log(`Found ${newSubs.length} new subscription${useSSub} to sync`, { color: 'green' })
     } else {
-      log('Ignoring subscriptions, not calculating new subscriptions to sync', { err: 'warning' })
+      log('Ignoring subscriptions, not calculating new subscriptions to sync', { level: 'warning' })
     }
     if (!PLAYLISTS) {
       log(`Found ${newPlaylists.length} new playlist${useSPlaylist} to sync`, { color: 'green' })
     } else {
-      log('Ignoring playlists, not calculating new playlists to sync', { err: 'warning' })
+      log('Ignoring playlists, not calculating new playlists to sync', { level: 'warning' })
     }
     if (removedHistory.length) {
       log(
@@ -1586,7 +1586,7 @@ export async function sync() {
   let hadErrors = false
   const markError = async (label, error) => {
     hadErrors = true
-    log(`❌ ${label}: ${error.message || error}`, { err: 'error' })
+    log(`❌ ${label}: ${error.message || error}`, { level: 'error' })
     certErrorHint(error)
   }
   //#endregion
@@ -1600,7 +1600,7 @@ export async function sync() {
       removedSubs.length === 0 &&
       removedPlaylists.length === 0
     ) {
-      log('ℹ️ No changes to sync, not updating Invidious or export files', { err: 'info' })
+      log('ℹ️ No changes to sync, not updating Invidious or export files', { level: 'info' })
       return
     }
     // its really hard for me to see the separation between these regions on vscode
@@ -1631,22 +1631,22 @@ export async function sync() {
           if (!QUIET && spinner) {
             spinner.text = `Syncing history... (${historyCount}/${newHistory.length} videos)`
           }
-        } catch (err) {
+        } catch (e) {
           if (!QUIET && !SILENT) {
             spinner?.fail(
-              `(${i + 1}/${newHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`
+              `(${i + 1}/${newHistory.length}) ❌ Failed for ${videoId}: ${e.message || e}`
             )
           }
-          await markError(`Failed to add ${videoId} to watch history`, err)
+          await markError(`Failed to add ${videoId} to watch history`, e)
         }
       }
-      if (newHistory.length <= 10 && !QUIET && !SILENT)
+      spinner?.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
+      if (newHistory.length <= 5 && !QUIET && !SILENT)
         for (const line of hisSummary) log(line, { color: 'green' })
       else if (!QUIET && !SILENT)
         log(`✅ Added ${newHistory.length} videos to watch history (too many to log them all)`, {
           color: 'green',
         })
-      spinner?.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
     }
     //#endregion
     //#region new subs
@@ -1671,13 +1671,13 @@ export async function sync() {
             subSummary.push(prettySum)
           }
           await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE)
-        } catch (err) {
+        } catch (e) {
           if (!QUIET && !SILENT) {
             subSpinner?.fail(
-              `(${subCount}/${newSubs.length}) ❌ Failed for ${sub}: ${err.message || err}`
+              `(${subCount}/${newSubs.length}) ❌ Failed for ${sub}: ${e.message || e}`
             )
           }
-          await markError(`Failed to subscribe to ${sub}`, err)
+          await markError(`Failed to subscribe to ${sub}`, e)
         }
       }
       if (!QUIET && !SILENT) {
@@ -1686,13 +1686,13 @@ export async function sync() {
         )
       }
       if (!QUIET && !SILENT) {
-        if (newSubs.length <= 10) for (const line of subSummary) log(line, { color: 'green' })
+        if (newSubs.length <= 5) for (const line of subSummary) log(line, { color: 'green' })
         else log(`✅ Added ${newSubs.length} subscriptions (too many to log)`, { color: 'green' })
       }
     }
     //#endregion
     //#region new playlists
-    if (VERBOSE) log(`Starting playlist export...`, { err: 'info' })
+    if (VERBOSE) log(`Starting playlist export...`, { level: 'info' })
     const plSummary = []
     let plSpinner
     if (!QUIET && !SILENT && !PLAYLISTS && newPlaylists.length) {
@@ -1713,7 +1713,7 @@ export async function sync() {
       try {
         for (const pl of newPlaylists) {
           if (!pl || typeof pl.title !== 'string') {
-            log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { err: 'warning' })
+            log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { level: 'warning' })
             continue // probably should break here but eh
           }
           if (!QUIET && !SILENT && plSpinner) {
@@ -1721,7 +1721,6 @@ export async function sync() {
             plSpinner.text = `Preparing playlist export... (${plCount}/${newPlaylists.length} playlists)`
           }
           if (oldPlaylistTitles.has(pl.title.toLowerCase())) {
-            log(`ℹ️ Skipping existing playlist: "${pl.title}"`, { err: 'info' })
             continue
           }
           // Add to playlist import structure
@@ -1733,8 +1732,7 @@ export async function sync() {
           })
           plSummary.push(` - "${pl.title}"`)
         }
-        if (!QUIET && plSpinner) {
-          for (const line of plSummary) log(line, { color: 'green' })
+        if (!QUIET && plSpinner && !SILENT) {
           // if theres somebody reading over these, im doing it this way for a few reasons
           // 1. consistency with the other spinners
           // 2. i dont want to have to refactor the whole function to async/await just for this one part
@@ -1743,6 +1741,7 @@ export async function sync() {
           plSpinner.succeed(
             `✅ Prepared ${playlistsToImport.length} playlist${playlistsToImport.length === 1 ? '' : 's'} for import`
           )
+          for (const line of plSummary) log(line, { color: 'green' })
         }
         if (playlistsToImport.length > 0 && hadErrors === false) {
           const importPath = './playlist-import.json'
@@ -1808,16 +1807,14 @@ export async function sync() {
         }
       }
       if (!QUIET && !SILENT) {
-        if (removedHistory.length <= 10) for (const line of hisRmSummary) log(line)
+        rmHSpinner?.succeed(
+          `✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`
+        )
+        if (removedHistory.length <= 5) for (const line of hisRmSummary) log(line)
         else
           log(`✅ Removed ${removedHistory.length} videos from watch history (too many to log)`, {
             color: 'green',
           })
-      }
-      if (!QUIET && !SILENT) {
-        rmHSpinner?.succeed(
-          `✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`
-        )
       }
     }
     //#endregion
@@ -1865,18 +1862,18 @@ export async function sync() {
       }
       if (!QUIET && !SILENT) {
         rmSSpinner?.succeed(`✅ Unsubscribed from ${removedSubCnt}/${removedSubs.length} channels`)
-        for (const line of subRmSummary) log(line, { color: 'green' })
+        for (const line of subRmSummary) log(line)
       }
     }
     //#endregion
     //#region removed playlists
-    if (VERBOSE) log(`Processing removed playlists...`, { err: 'info' })
+    if (VERBOSE) log(`Processing removed playlists...`, { level: 'info' })
     // Remove deleted playlists from playlist-import.json
     const importPath = './playlist-import.json'
     if (removedPlaylists.length > 0 && existsSync(importPath)) {
       try {
         log(`sorry but the way I made this logic, there won't be a nice spinner for this part`, {
-          err: 'info',
+          level: 'info',
         })
         const importData = JSON.parse(readFileSync(importPath, 'utf-8'))
 
@@ -1887,7 +1884,9 @@ export async function sync() {
 
         writeFileSync(importPath, JSON.stringify(importData, null, 2))
         if (!QUIET) {
-          log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, { err: 'info' })
+          log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, {
+            level: 'info',
+          })
         }
       } catch (err) {
         await markError(`Failed to update ${importPath} after removals`, err)
@@ -1908,7 +1907,7 @@ export async function sync() {
       await runHook('onError', { error: 'check cmd' })
       log(
         '⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.',
-        { err: 'warning' }
+        { level: 'warning' }
       )
     }
   } else {
@@ -1922,7 +1921,7 @@ export async function sync() {
       await runHook('onError', { error: 'look at the terminal idk bro' })
       log(
         '⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.',
-        { err: 'warning' }
+        { level: 'warning' }
       )
     }
   }
@@ -1935,7 +1934,7 @@ const modulePath = realpathSync(fileURLToPath(import.meta.url))
 const entryPath = realpathSync(resolve(process.argv[1] || ''))
 if (modulePath === entryPath) {
   await main().catch(async err => {
-    log(`❌ Fatal error: ${err}`, { err: 'error' })
+    log(`❌ Fatal error: ${err}`, { level: 'error' })
     await logConsoleOutput()
     await runHook('onError', { error: err })
     console.log('[ft-to-inv] waiting for writes to finish before exiting')

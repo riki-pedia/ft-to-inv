@@ -34,11 +34,13 @@ export async function logConsoleOutput(file = outFile, outputArr = consoleOutput
  * @param {string} message - The message to log.
  * @param {object} [options={}] - Optional parameters.
  * @param {Array<string>} [options.c=consoleOutput] - The output array to push the message into.
- * @param {string} [options.err] - If 'error' or 'warning', logs the message with appropriate styling.
+ * @param {string} [options.err] - If 'error' or 'warning', logs the message with appropriate styling. (deprecated)
+ * @param {string} [options.level] - The level of the log message ('info', 'warn', 'error'). This is the preferred option over 'err'.
  * @param {string} [options.color] - Optional chalk color to style the message.
  */
 export function log(message, options = {}) {
-  const { err = null, color = null } = options
+  // backwards compatibility for plugins that use err instead of level
+  const { level = null, color = null, err = null } = options
   const timestamp = new Date().toISOString()
   const formattedMessage = `[${timestamp}] ${message}`
   globals = getGlobalVars()
@@ -46,17 +48,18 @@ export function log(message, options = {}) {
   const silent = globals.silent || false
   consoleOutput.push(formattedMessage)
 
-  if (!err && !color) {
-    console.log('[ft-to-inv] ' + message)
+  if (!level && !color && !err) {
+    // make [ft-to-inv] stick out
+    console.log(chalk.white('[ft-to-inv] ') + message)
   }
-  if (err === 'error') {
+  if ((level || err) === 'error') {
     console.error('[ft-to-inv] ' + chalk.red('Error! ') + message)
   }
-  if (err === 'warning') {
+  if ((level || err) === 'warning') {
     if (silent) return
     console.warn('[ft-to-inv] ' + chalk.yellow('Warning! ') + message)
   }
-  if (err === 'info') {
+  if ((level || err) === 'info') {
     if (silent || quiet) return
     console.info('[ft-to-inv] ' + chalk.blue('Info: ') + message)
   }

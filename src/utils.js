@@ -22,7 +22,7 @@ export async function loadNDJSON(filePath) {
       } catch (err) {
         log(
           `❌ Could not parse line in ${filePath}: ${line}. the error was: ${err.message || err}`,
-          { err: 'warning' }
+          { level: 'warning' }
         )
       }
     }
@@ -91,7 +91,7 @@ export async function retryPostRequest(
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 1000 // 2s, 4s, 8s...
         log(`⚠️ Attempt ${attempt} failed (${err.message}), retrying in ${delay / 1000}s...`, {
-          err: 'warning',
+          level: 'warning',
         })
         await sleep(delay)
       }
@@ -153,7 +153,7 @@ export async function postToInvidious(
             log(
               `⚠️ Invidious API request failed: bad token or API disabled. 
 If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${instance}/data_control`,
-              { err: 'warning' }
+              { level: 'warning' }
             )
             return reject(new Error(`Authentication error (403): ${body}`))
           }
@@ -165,7 +165,7 @@ If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${ins
           }
           if (res.statusCode === 404) {
             const errMsg = `Endpoint not found (404). The instance ${instance} may be outdated or down.`
-            log(`⚠️ ${errMsg}`, { err: 'warning' })
+            log(`⚠️ ${errMsg}`, { level: 'warning' })
             return reject(new Error(errMsg))
             // invidious' default behavior is to return 200 with a blank page for unknown endpoints, our tool expects 204 for success
           } else if (res.statusCode === 200) {
@@ -173,10 +173,10 @@ If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${ins
             if (vv)
               log(
                 `[very-verbose] Warning: Received 200 OK instead of 204 No Content. This means the endpoint isn't found because we wanted 204 for success.\n update your instance or contact the admin.\n got response: ${body.length <= 100 ? body : 'data too long to display'}`,
-                { err: 'warning' }
+                { level: 'warning' }
               )
             const errMsg = `Expected 204 No Content but got 200 OK. The instance ${instance} may be outdated.`
-            log(`⚠️ ${errMsg}`, { err: 'warning' })
+            log(`⚠️ ${errMsg}`, { level: 'warning' })
             return reject(new Error(errMsg))
           }
           if (veryVerbose)
@@ -291,10 +291,10 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
       )
     return { author: data.author || 'Unknown', title: data.title || vid }
   } catch (err) {
-    log(`⚠️ Failed to get channel name for ${vid}: ${err.message}`, { err: 'warning' })
+    log(`⚠️ Failed to get channel name for ${vid}: ${err.message}`, { level: 'warning' })
     const errTL = err.message.toLowerCase()
     if (errTL.includes('fetch failed')) {
-      log('potential cert problem, see docs about --use-system-ca', { err: 'warning' })
+      log('potential cert problem, see docs about --use-system-ca', { level: 'warning' })
       const argTable = await getGlobalVars()
       if (argTable.veryVerbose) {
         log(

@@ -45,8 +45,8 @@ function loadJsonc(filePath) {
   try {
     const raw = readFileSync(filePath, 'utf-8')
     return parse(raw)
-  } catch (err) {
-    console.warn(`⚠️ Failed to load config at ${filePath}: ${err.message}`)
+  } catch (error) {
+    console.warn(`⚠️ Failed to load config at ${filePath}: ${error.message || error}`)
     return {}
   }
 }
@@ -86,13 +86,13 @@ async function testToken(instance, token) {
           reject(new Error(`Invalid token or instance, received status code ${res.statusCode}`))
         }
       })
-      req.on('error', err => {
-        console.warn(`⚠️ Failed to verify token: ${err.message}`)
-        reject(new Error(`Failed to verify token: ${err.message}`))
+      req.on('error', e => {
+        console.warn(`⚠️ Failed to verify token: ${e.message}`)
+        reject(new Error(`Failed to verify token: ${e.message}`))
       })
     })
-  } catch (err) {
-    console.warn(`⚠️ Failed to verify token: ${err.message}`)
+  } catch (error) {
+    console.warn(`⚠️ Failed to verify token: ${error.message}`)
     return false
   }
 }
