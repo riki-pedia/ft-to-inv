@@ -9,3 +9,4 @@ ft-to-inv-test.jsonc
 ft-to-test.jsonc
 triage-results.json
 .env
+/plugins/

@@ -12,7 +12,7 @@ export async function loadPlugins() {
   // moving this log to export.js
   const pluginsDir = path.resolve('./plugins')
   if (!fs.existsSync(pluginsDir)) {
-    const conf = await getGlobalVars()
+    const conf = getGlobalVars()
     if (!conf.silent) log(' ℹ️ No plugins found', { level: 'info' })
     return
   }
@@ -50,7 +50,7 @@ export async function loadPlugins() {
       pluginMeta.push(meta)
       plugins.push(plugin)
 
-      const gv = await getGlobalVars()
+      const gv = getGlobalVars()
       if (!gv.quiet && !gv.silent) {
         console.log(
           `[ft-to-inv] 📦 Loaded plugin: ${meta.name} v${meta.version} by ${meta.author || 'Unknown'}`

@@ -39,7 +39,7 @@ import {
   setConfig,
   retryPostRequest,
 } from './utils.js'
-import { resolveConfig } from './args.js'
+import { resolveConfig, getGlobalVars } from './args.js'
 import { logConsoleOutput, log } from './logs.js'
 import cron from 'node-cron'
 import { clearFiles } from './clear-import-files.js'
@@ -684,7 +684,7 @@ export async function main(overrides = {}) {
     log('🔌 Loading plugins...', { level: 'info' })
   }
   await loadPlugins()
-  await runHook('beforeMain', { overrides })
+  await runHook('beforeMain', { overrides, version })
   const clearFilesFlag = resolveFlagArg(
     args,
     ['--clear', '--clear-files', '--delete-files'],
@@ -1315,7 +1315,7 @@ Aliases:
     log(`   Export → ${stripDir(OUTPUT_FILE)}`, { level: 'info' })
     log(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`, { level: 'info' })
   }
-  await runHook('beforeSync', { overrides })
+  await runHook('beforeSync', { conf: getGlobalVars() })
   // Now call sync
   await sync()
 }
@@ -1442,7 +1442,7 @@ export async function sync() {
   const prettyRemovedPlaylists = []
 
   const newData = { history: newHistory, subs: newSubs, playlists: newPlaylists }
-  await runHook('duringSync', { data: newData })
+  await runHook('duringSync', { data: newData, conf: getGlobalVars() })
   if (DRY_RUN) {
     for (const id of newHistory) {
       const video = await getVideoNameAndAuthor(id, INSTANCE, TOKEN)

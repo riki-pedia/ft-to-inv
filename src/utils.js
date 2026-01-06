@@ -126,7 +126,7 @@ export async function postToInvidious(
   const client = instance.startsWith('http:') ? http : https
   const fullPath = `${instance.replace(/\/$/, '')}/api/v1${path}`
   const payload = JSON.stringify(json ?? {})
-  const argTable = await getGlobalVars()
+  const argTable = getGlobalVars()
   const { veryVerbose } = argTable
   if (veryVerbose)
     log(
@@ -164,7 +164,7 @@ If API is disabled, try NO-SYNC and upload invidious-import.json manually: ${ins
             return reject(new Error(`HTTP ${res.statusCode}: ${body}`))
           }
           if (res.statusCode === 404) {
-            const errMsg = `Endpoint not found (404). The instance ${instance} may be outdated or down.`
+            const errMsg = `Endpoint not found (404). The instance '${instance}' may be outdated or down.`
             log(`⚠️ ${errMsg}`, { level: 'warning' })
             return reject(new Error(errMsg))
             // invidious' default behavior is to return 200 with a blank page for unknown endpoints, our tool expects 204 for success
@@ -228,7 +228,7 @@ export async function writePlaylistImport(playlists, outputPath = './playlist-im
   }
 
   writeFileSync(outputPath, JSON.stringify(minimalImport, null, 2))
-  const conf = await getGlobalVars()
+  const conf = getGlobalVars()
   const quiet = conf.quiet || false
   const silent = conf.silent || false
   if (!quiet && !silent) {
@@ -239,7 +239,7 @@ export async function writePlaylistImport(playlists, outputPath = './playlist-im
 // Fetch channel metadata to get friendly name
 export async function getChannelName(ucid, instance) {
   try {
-    const argTable = await getGlobalVars()
+    const argTable = getGlobalVars()
     const vv = argTable.veryVerbose
     const TOKEN = argTable.token
     if (vv) log(`[very-verbose] Fetching channel name for UCID: ${ucid}`)
@@ -266,7 +266,7 @@ export async function getChannelName(ucid, instance) {
 }
 export async function getVideoNameAndAuthor(vid, instance, token) {
   try {
-    const argTable = await getGlobalVars()
+    const argTable = getGlobalVars()
     const vv = argTable.veryVerbose
     if (vv) log(`[very-verbose] Fetching video info for VID: ${vid}`)
     const url = new URL(`/api/v1/videos/${vid}`, instance).href
@@ -295,7 +295,7 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
     const errTL = err.message.toLowerCase()
     if (errTL.includes('fetch failed')) {
       log('potential cert problem, see docs about --use-system-ca', { level: 'warning' })
-      const argTable = await getGlobalVars()
+      const argTable = getGlobalVars()
       if (argTable.veryVerbose) {
         log(
           `[very-verbose] Try this if your cert is failing:

@@ -11,7 +11,7 @@ let timesShown = 0
 // function that takes all of the console output, and logs it to a file
 export async function logConsoleOutput(file = outFile, outputArr = consoleOutput) {
   try {
-    globals = await getGlobalVars()
+    globals = getGlobalVars()
     LOGS_BOOLEAN = globals.logs || false
     if (file === undefined || LOGS_BOOLEAN === false) return
     else {
@@ -40,30 +40,71 @@ export async function logConsoleOutput(file = outFile, outputArr = consoleOutput
  */
 export function log(message, options = {}) {
   // backwards compatibility for plugins that use err instead of level
-  const { level = null, color = null, err = null } = options
-  const timestamp = new Date().toISOString()
-  const formattedMessage = `[${timestamp}] ${message}`
-  globals = getGlobalVars()
-  const quiet = globals.quiet || false
-  const silent = globals.silent || false
-  consoleOutput.push(formattedMessage)
+  try {
+    const { level = null, color = null, err = null } = options
+    const timestamp = new Date().toISOString()
+    const formattedMessage = `[${timestamp}] ${message}`
+    globals = getGlobalVars()
+    const quiet = globals.quiet
+    const silent = globals.silent
 
-  if (!level && !color && !err) {
-    // make [ft-to-inv] stick out
-    console.log(chalk.white('[ft-to-inv] ') + message)
+    if (!level && !color && !err && silent !== true && quiet !== true) {
+      // make [ft-to-inv] stick out
+      console.log(chalk.white('[ft-to-inv] ') + message)
+    }
+    if ((level || err) === 'error') {
+      console.error('[ft-to-inv] ' + chalk.red('Error! ') + message)
+      consoleOutput.push(formattedMessage)
+    }
+    if ((level || err) === 'warning') {
+      if (silent) return
+      console.warn('[ft-to-inv] ' + chalk.yellow('Warning! ') + message)
+      consoleOutput.push(formattedMessage)
+    }
+    if ((level || err) === 'info') {
+      if (silent === true || quiet === true) return
+      console.info('[ft-to-inv] ' + chalk.blue('Info: ') + message)
+      consoleOutput.push(formattedMessage)
+    }
+    if (color !== null && color !== undefined) {
+      if (silent === true || quiet === true) return
+      console.log('[ft-to-inv] ' + chalk[color](message))
+      consoleOutput.push(formattedMessage)
+    }
+  } catch {
+    // stdout probably doesnt exist, just skip logging
   }
-  if ((level || err) === 'error') {
-    console.error('[ft-to-inv] ' + chalk.red('Error! ') + message)
-  }
-  if ((level || err) === 'warning') {
-    if (silent) return
-    console.warn('[ft-to-inv] ' + chalk.yellow('Warning! ') + message)
-  }
-  if ((level || err) === 'info') {
-    if (silent || quiet) return
-    console.info('[ft-to-inv] ' + chalk.blue('Info: ') + message)
-  }
-  if (color !== null && color !== undefined) {
-    console.log('[ft-to-inv] ' + chalk[color](message))
+}
+export function pluginLog(message, options = {}) {
+  // similar to log but for plugins, adds [plugin] tag
+  try {
+    const { level = null, color = null, err = null, name = 'name-not-provided' } = options
+    const timestamp = new Date().toISOString()
+    const formattedMessage = `[${timestamp}] ${message}`
+    globals = getGlobalVars()
+    const quiet = globals.quiet
+    const silent = globals.silent
+    consoleOutput.push(formattedMessage)
+
+    if (!level && !color && !err && silent !== true && quiet !== true) {
+      // make [plugin] stick out
+      console.log(chalk.white(`[plugin: ${name}] `) + message)
+    }
+    if ((level || err) === 'error') {
+      console.error(`[plugin: ${name}] ` + chalk.red('Error! ') + message)
+    }
+    if ((level || err) === 'warning') {
+      if (silent) return
+      console.warn(`[plugin: ${name}] ` + chalk.yellow('Warning! ') + message)
+    }
+    if ((level || err) === 'info') {
+      if (silent === true || quiet === true) return
+      console.info(`[plugin: ${name}] ` + chalk.blue('Info: ') + message)
+    }
+    if (color !== null && color !== undefined) {
+      console.log(`[plugin: ${name}] ` + chalk[color](message))
+    }
+  } catch {
+    // stdout probably doesnt exist, just skip logging
   }
 }

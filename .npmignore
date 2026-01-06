@@ -8,3 +8,5 @@ ft-to-inv-test.jsonc
 ft-to-test.jsonc
 triage-results.json
 # this is the same as .gitignore
+.env
+/plugins/

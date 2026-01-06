@@ -128,7 +128,7 @@ export async function setGlobalVars(config) {
   Object.assign(argTable, config)
   await sleep(0.5)
 }
-export async function getGlobalVars() {
+export function getGlobalVars() {
   return argTable
 }
 export default { argTable, resolveConfig, setGlobalVars, getGlobalVars }
