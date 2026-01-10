@@ -42,11 +42,18 @@ try {
 let hasNoErrors = true
 async function verifyPlugin(url, sha) {
   const res = await fetchText(url)
+  // remove the beginning "https://raw.githubusercontent.com/riki-pedia/ft-to-inv-pkg/refs/heads/main/plugins" from the url to get something like "example-plugin/example-plugin.js" for better logging
+  const friendlyName = url.replace(
+    'https://raw.githubusercontent.com/riki-pedia/ft-to-inv-pkg/refs/heads/main/plugins/',
+    ''
+  )
   const actualSha = sha256(res)
   if (actualSha.toLowerCase() !== sha.toLowerCase()) {
-    throw new Error(`[ft-to-inv] ❌ SHA mismatch for ${url}. Expected ${sha}, got ${actualSha}`)
+    throw new Error(
+      `[ft-to-inv] ❌ SHA mismatch for ${friendlyName}. Expected ${sha}, got ${actualSha}`
+    )
   }
-  log(`✅ Verified ${url} (${actualSha})`)
+  log(`✅ Verified ${friendlyName} (${actualSha})`)
 }
 
 export async function installPlugin(name, registry = regis) {
@@ -65,13 +72,15 @@ export async function installPlugin(name, registry = regis) {
     // new format
     try {
       const jsonDest = path.join(pluginDir, `${name}.json`)
-      const scriptDest = path.join(pluginDir, `${name}.js`)
       const json = await fetchText(plugin.json)
       await verifyPlugin(plugin.json, plugin.jsonSha).catch(err => {
         log(`Failed to verify ${plugin.json}: ${err.message || err}`, { level: 'error' })
         hasNoErrors = false
       })
       const js = await fetchText(plugin.script)
+      const scriptDest = js.includes('.mjs')
+        ? path.join(pluginDir, `${name}.mjs`)
+        : path.join(pluginDir, `${name}.js`)
       await verifyPlugin(plugin.script, plugin.scriptSha).catch(err => {
         log(`Failed to verify ${plugin.script}: ${err.message || err}`, { level: 'error' })
         hasNoErrors = false

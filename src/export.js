@@ -1591,6 +1591,7 @@ export async function sync() {
   }
   //#endregion
   //#region api sync
+  let historySuccess, subSuccess, plSuccess, rmHisSuccess, rmSubSuccess, rmPlSuccess
   if (!NOSYNC) {
     if (
       newSubs.length === 0 &&
@@ -1601,6 +1602,10 @@ export async function sync() {
       removedPlaylists.length === 0
     ) {
       log('ℹ️ No changes to sync, not updating Invidious or export files', { level: 'info' })
+      const json = {
+        success: true,
+      }
+      setGlobalVars({ ...json })
       return
     }
     // its really hard for me to see the separation between these regions on vscode
@@ -1611,6 +1616,7 @@ export async function sync() {
     //#region new history
     let historyCount = 0
     const hisSummary = []
+    historySuccess = true
     let spinner
     if (newHistory.length && !HISTORY) {
       if (!QUIET && !SILENT) {
@@ -1637,21 +1643,31 @@ export async function sync() {
               `(${i + 1}/${newHistory.length}) ❌ Failed for ${videoId}: ${e.message || e}`
             )
           }
+          historySuccess = false
           await markError(`Failed to add ${videoId} to watch history`, e)
+          break
         }
       }
-      spinner?.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
-      if (newHistory.length <= 5 && !QUIET && !SILENT)
-        for (const line of hisSummary) log(line, { color: 'green' })
-      else if (!QUIET && !SILENT)
-        log(`✅ Added ${newHistory.length} videos to watch history (too many to log them all)`, {
-          color: 'green',
-        })
+      if (historySuccess === true) {
+        spinner?.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
+        if (newHistory.length <= 5 && !QUIET && !SILENT)
+          for (const line of hisSummary) log(line, { color: 'green' })
+        else if (!QUIET && !SILENT)
+          log(`✅ Added ${newHistory.length} videos to watch history (too many to log them all)`, {
+            color: 'green',
+          })
+      } else {
+        const message =
+          "[ft-to-inv] history sync did not complete successfully. check previous errors for details. rather than continuing in this (potentially) broken state, i'll exit here."
+        log(`❌ ${message}`, { level: 'fatal' })
+        throw new Error(message)
+      }
     }
     //#endregion
     //#region new subs
     let subCount = 0
     let subSpinner
+    let subSuccess = true
     if (!QUIET && !SILENT && !SUBS && newSubs.length) {
       subSpinner = ora(
         `Syncing subscriptions... (${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'})`
@@ -1677,23 +1693,34 @@ export async function sync() {
               `(${subCount}/${newSubs.length}) ❌ Failed for ${sub}: ${e.message || e}`
             )
           }
+          subSuccess = false
           await markError(`Failed to subscribe to ${sub}`, e)
+          // break the for loop to avoid multiple errors, since if one fails they probably all will
+          break
         }
       }
-      if (!QUIET && !SILENT) {
-        subSpinner?.succeed(
-          `✅ Synced ${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'}`
-        )
-      }
-      if (!QUIET && !SILENT) {
-        if (newSubs.length <= 5) for (const line of subSummary) log(line, { color: 'green' })
-        else log(`✅ Added ${newSubs.length} subscriptions (too many to log)`, { color: 'green' })
+      if (subSuccess === true) {
+        if (!QUIET && !SILENT) {
+          subSpinner?.succeed(
+            `✅ Synced ${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'}`
+          )
+        }
+        if (!QUIET && !SILENT) {
+          if (newSubs.length <= 5) for (const line of subSummary) log(line, { color: 'green' })
+          else log(`✅ Added ${newSubs.length} subscriptions (too many to log)`, { color: 'green' })
+        }
+      } else {
+        const message =
+          "[ft-to-inv] subscription sync did not complete successfully. check previous errors for details. this breaks the state of your export so it's best to exit here and fix whater went wrong before trying again."
+        log(`❌ ${message}`, { level: 'fatal' })
+        throw new Error(message)
       }
     }
     //#endregion
     //#region new playlists
     if (VERBOSE) log(`Starting playlist export...`, { level: 'info' })
     const plSummary = []
+    let plSuccess = true
     let plSpinner
     if (!QUIET && !SILENT && !PLAYLISTS && newPlaylists.length) {
       plSummary.push(
@@ -1764,14 +1791,22 @@ export async function sync() {
           plSpinner?.fail(`❌ Failed to prepare playlist import: ${err.message || err}`)
         }
         await markError('Failed to prepare playlist import', err)
+        plSuccess = false
       }
     }
+    if (plSuccess === false) {
+      const message =
+        "[ft-to-inv] playlist export failed for reasons probably logged above. please fix the issues and try again. if you didn't see the error try changing to verbose mode for more details."
+      log(`❌ ${message}`, { level: 'fatal' })
+      throw new Error(message)
+    }
+
     //#endregion
     //#region removed history
     let removedHisCnt = 0
     // Remove watched videos
     let rmHSpinner
-    // THIS IS THE CORRECT WAY TO DO IT BUT THIS IS THE ONLY BLOCK WHERE I DID IT THIS WAY
+    let rmHisSuccess = true
     if (removedHistory.length) {
       if (!QUIET && !SILENT) {
         rmHSpinner = ora(
@@ -1803,23 +1838,33 @@ export async function sync() {
               `(${removedHisCnt}/${removedHistory.length}) ❌ Failed for ${videoId}: ${err.message || err}`
             )
           }
+          rmHisSuccess = false
           await markError('Failed to remove from watch history', err)
+          break
         }
       }
-      if (!QUIET && !SILENT) {
-        rmHSpinner?.succeed(
-          `✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`
-        )
-        if (removedHistory.length <= 5) for (const line of hisRmSummary) log(line)
-        else
-          log(`✅ Removed ${removedHistory.length} videos from watch history (too many to log)`, {
-            color: 'green',
-          })
+      if (rmHisSuccess === true) {
+        if (!QUIET && !SILENT) {
+          rmHSpinner?.succeed(
+            `✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`
+          )
+          if (removedHistory.length <= 5) for (const line of hisRmSummary) log(line)
+          else
+            log(`✅ Removed ${removedHistory.length} videos from watch history (too many to log)`, {
+              color: 'green',
+            })
+        }
+      } else {
+        const message =
+          "[ft-to-inv] history removal did not complete successfully. check previous errors for details. rather than continuing in this (potentially) broken state, i'll exit here."
+        log(`❌ ${message}`, { level: 'fatal' })
+        throw new Error(message)
       }
     }
     //#endregion
     //#region removed subs
     let removedSubCnt = 0
+    let rmSubSuccess = true
     const subRmSummary = []
     if (!QUIET) {
       subRmSummary.push('Channels unsubscribed from:')
@@ -1857,16 +1902,28 @@ export async function sync() {
               `(${removedSubCnt}/${removedSubs.length}) ❌ Failed for ${ucid}: ${err.message || err}`
             )
           }
+          rmSubSuccess = false
           await markError(`Failed to unsubscribe from ${ucid}`, err)
+          break
         }
       }
-      if (!QUIET && !SILENT) {
-        rmSSpinner?.succeed(`✅ Unsubscribed from ${removedSubCnt}/${removedSubs.length} channels`)
-        for (const line of subRmSummary) log(line)
+      if (rmSubSuccess === true) {
+        if (!QUIET && !SILENT) {
+          rmSSpinner?.succeed(
+            `✅ Unsubscribed from ${removedSubCnt}/${removedSubs.length} channels`
+          )
+          for (const line of subRmSummary) log(line)
+        }
+      } else {
+        const message =
+          "[ft-to-inv] subscription removal did not complete successfully. check previous errors for details. this breaks the state of your export so it's best to exit here and fix whater went wrong before trying again."
+        log(`❌ ${message}`, { level: 'fatal' })
+        throw new Error(message)
       }
     }
     //#endregion
     //#region removed playlists
+    let rmPlSuccess = true
     if (VERBOSE) log(`Processing removed playlists...`, { level: 'info' })
     // Remove deleted playlists from playlist-import.json
     const importPath = './playlist-import.json'
@@ -1889,12 +1946,23 @@ export async function sync() {
           })
         }
       } catch (err) {
+        rmPlSuccess = false
         await markError(`Failed to update ${importPath} after removals`, err)
+      }
+      if (rmPlSuccess === false) {
+        const message =
+          '[ft-to-inv] playlist removal did not complete successfully. check previous errors for details. if you had new playlists to import, the playlist-import.json file may be in a broken state, so please check that file and fix any issues before trying again.'
+        log(`❌ ${message}`, { level: 'fatal' })
+        throw new Error(message)
       }
     } //#endregion
     //#region final write
     if (!hadErrors) {
       writeNewExport(output)
+      const json = {
+        success: true,
+      }
+      setGlobalVars({ ...json })
       if (!QUIET) {
         log(`✅ Exported to ${stripDir(OUTPUT_FILE)} and updated ${stripDir(OLD_EXPORT_PATH)}`)
       }
@@ -1913,7 +1981,7 @@ export async function sync() {
   } else {
     if (!hadErrors) {
       noSyncWrite(output, OUTPUT_FILE, QUIET)
-      console.log("Sync complete. (no-sync mode, didn't contact Invidious API)")
+      log("Sync complete. (no-sync mode, didn't contact Invidious API)")
     } else {
       // do this stupid log message because i dont have data from markerror
       // i know i could just pass the error message, but i want to release this sooner
@@ -1925,7 +1993,25 @@ export async function sync() {
       )
     }
   }
-  await runHook('afterSync', { data: newData })
+  const successes = {
+    added: {
+      history: historySuccess,
+      subs: subSuccess,
+      playlists: plSuccess,
+    },
+    removed: {
+      history: rmHisSuccess,
+      subs: rmSubSuccess,
+      playlists: rmPlSuccess,
+    },
+  }
+  await runHook('afterSync', { data: newData, successes, conf: getGlobalVars() })
+  if (!hadErrors) {
+    const json = {
+      sucess: true,
+    }
+    setGlobalVars({ ...json })
+  }
 }
 //#endregion
 //#region call main and schedule
@@ -1934,11 +2020,11 @@ const modulePath = realpathSync(fileURLToPath(import.meta.url))
 const entryPath = realpathSync(resolve(process.argv[1] || ''))
 if (modulePath === entryPath) {
   await main().catch(async err => {
-    log(`❌ Fatal error: ${err}`, { level: 'error' })
+    log(`❌ fatal: ${err}`, { level: 'fatal' })
     await logConsoleOutput()
     await runHook('onError', { error: err })
-    console.log('[ft-to-inv] waiting for writes to finish before exiting')
-    console.log('[ft-to-inv] if this keeps happening please report an issue')
+    log('waiting for writes to finish before exiting')
+    log('if this keeps happening please report an issue')
     setTimeout(() => {
       process.exit(1)
     }, 100)

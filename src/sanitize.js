@@ -1,7 +1,6 @@
 // sanitize.js
 import path from 'path'
 import cron from 'node-cron'
-import { logConsoleOutput } from './logs.js'
 
 // Token
 function sanitizeToken(token) {
@@ -88,5 +87,3 @@ export async function sanitizeConfig(input) {
 
   return output
 }
-// just logs whatever is in the console to a file
-await logConsoleOutput()

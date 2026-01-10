@@ -10,3 +10,5 @@ ft-to-test.jsonc
 triage-results.json
 .env
 /plugins/
+logs/
+reports/

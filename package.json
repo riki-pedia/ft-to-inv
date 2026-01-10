@@ -45,7 +45,6 @@
     "chalk": "^4.1.2",
     "comment-json": "^4.2.5",
     "dotenv": "^17.2.2",
-    "ft-to-inv": "^2.0.0",
     "keytar": "^7.9.0",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",

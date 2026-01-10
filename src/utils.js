@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, copyFileSync } from 'fs'
 import { join } from 'path'
 import https from 'https'
 import http from 'http'
-import { log, logConsoleOutput } from './logs.js'
+import { log } from './logs.js'
 let config = {}
 const DEFAULT_HEADERS = {
   'User-Agent': 'ft-to-inv-bot/1.0 (+https://ft-to-inv-bot.riki-pedia.org/)',
@@ -311,4 +311,3 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
     }
   }
 }
-await logConsoleOutput()

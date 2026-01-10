@@ -10,3 +10,5 @@ triage-results.json
 # this is the same as .gitignore
 .env
 /plugins/
+logs/
+reports/
