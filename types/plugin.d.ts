@@ -1,29 +1,66 @@
-// types/plugin.d.ts
-
-/** Metadata every plugin must provide via `register()` */
-export interface PluginMeta {
-  name: string // short id, e.g. "example-plugin"
-  version: string // semver
-  description?: string // optional description
-  author: string // required author
-  hooks?: string[] // optional: which hooks are implemented
+export interface PluginManifest {
+  name: string
+  version: string
+  description: string
+  author: string
+  hooks: string[]
 }
 
-/** Context object passed into hooks */
-export interface HookContext {
-  config?: object // resolved config for ft-to-inv
-  overrides?: Record<string, object> // runtime overrides from main()
-  data?: Record<string, object> // sync/export data
-  // eslint really hates this but its the only way to allow extensions
+export interface hookContext {
+  data: {
+    added: {
+      history: string[]
+      subs: string[]
+      playlists: string[]
+    }
+    removed: {
+      history: string[]
+      subs: string[]
+      playlists: string[]
+    }
+    // for legacy plugins:
+    history: string[]
+    subs: string[]
+    playlists: string[]
+  }
+  conf: {
+    token: string
+    instance: string
+    export_dir: string
+    freetube_dir: string
+    verbose: boolean
+    dry_run: boolean
+    dont_shorten_paths: boolean
+    no_sync: boolean
+    quiet: boolean
+    silent: boolean
+    cron_schedule: string
+    insecure: boolean
+    history: boolean
+    subs: boolean
+    playlists: boolean
+    veryVerbose: boolean
+  }
+  success?: boolean
+}
+
+export type HookName =
+  | 'beforeMain'
+  | 'duringMain'
+  | 'afterMain'
+  | 'beforeSync'
+  | 'duringSync'
+  | 'afterSync'
+  | 'onError'
+
+export type HookFunction = (context: hookContext) => Promise<void> | void
+
+export interface registerPlugin {
+  (manifest: PluginManifest): void
+}
+
+export interface Plugin {
+  register: registerPlugin
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any // allow extension
-}
-
-/** Every plugin must export at least this */
-export interface PluginModule {
-  register: () => PluginMeta
-  beforeMain?: (context: HookContext) => Promise<void> | void
-  beforeSync?: (context: HookContext) => Promise<void> | void
-  afterSync?: (context: HookContext) => Promise<void> | void
-  afterMain?: (context: HookContext) => Promise<void> | void
+  [hookName: string]: HookFunction | any
 }

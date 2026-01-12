@@ -17,4 +17,4 @@ export interface SyncOptions {
   helpcmd?: string
 }
 export function main(overrides?: Partial<SyncOptions>): Promise<void>
-export function sync(opts: SyncOptions): Promise<void>
+export function sync(): Promise<void>

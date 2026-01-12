@@ -80,7 +80,9 @@ export async function installPlugin(name, registry = regis) {
       const js = await fetchText(plugin.script)
       const scriptDest = js.includes('.mjs')
         ? path.join(pluginDir, `${name}.mjs`)
-        : path.join(pluginDir, `${name}.js`)
+        : js.includes('.cjs')
+          ? path.join(pluginDir, `${name}.cjs`)
+          : path.join(pluginDir, `${name}.js`)
       await verifyPlugin(plugin.script, plugin.scriptSha).catch(err => {
         log(`Failed to verify ${plugin.script}: ${err.message || err}`, { level: 'error' })
         hasNoErrors = false

@@ -1441,7 +1441,14 @@ export async function sync() {
   const prettyRemovedSubs = []
   const prettyRemovedPlaylists = []
 
-  const newData = { history: newHistory, subs: newSubs, playlists: newPlaylists }
+  const newData = {
+    added: { history: newHistory, subs: newSubs, playlists: newPlaylists },
+    removed: { history: removedHistory, subs: removedSubs, playlists: removedPlaylists },
+    // for legacy plugins:
+    history: newHistory,
+    subs: newSubs,
+    playlists: newPlaylists,
+  }
   await runHook('duringSync', { data: newData, conf: getGlobalVars() })
   if (DRY_RUN) {
     for (const id of newHistory) {
@@ -1606,12 +1613,24 @@ export async function sync() {
         success: true,
       }
       setGlobalVars({ ...json })
+      const successes = {
+        // similar to the object way below this one, just to track boolean success for the whole sync, which is used in plugins and the export file writing logic
+        added: {
+          history: true,
+          subs: true,
+          playlists: true,
+        },
+        removed: {
+          history: true,
+          subs: true,
+          playlists: true,
+        },
+        // usually a conditional check, but this is just to be explicit that if there are no changes, we consider it a successful sync with no changes rather than skipping the sync entirely
+        hadSuccess: true,
+      }
+      await runHook('afterSync', { data: newData, conf: getGlobalVars(), successes })
       return
     }
-    // its really hard for me to see the separation between these regions on vscode
-    // so we add region names
-    // "you could just add spaces"
-    // but im lazy
     //#endregion
     //#region new history
     let historyCount = 0
@@ -1988,8 +2007,8 @@ export async function sync() {
       // this is extremely unprofessional, but that also reflects on the code quality
       await runHook('onError', { error: 'look at the terminal idk bro' })
       log(
-        '⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.',
-        { level: 'warning' }
+        'this error should be impossible to get. if you are a user please report this as an issue with details on what you did before this happened and the full logs from the terminal. github: https://github.com/riki-pedia/ft-to-inv/issues',
+        { level: 'error' }
       )
     }
   }
@@ -2003,6 +2022,19 @@ export async function sync() {
       history: rmHisSuccess,
       subs: rmSubSuccess,
       playlists: rmPlSuccess,
+    },
+    hadSuccess: () => {
+      if (
+        historySuccess &&
+        subSuccess &&
+        plSuccess &&
+        rmHisSuccess &&
+        rmSubSuccess &&
+        rmPlSuccess
+      ) {
+        return true
+      }
+      return false
     },
   }
   await runHook('afterSync', { data: newData, successes, conf: getGlobalVars() })

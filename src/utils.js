@@ -242,6 +242,7 @@ export async function getChannelName(ucid, instance) {
     const argTable = getGlobalVars()
     const vv = argTable.veryVerbose
     const TOKEN = argTable.token
+    if (!instance) instance = argTable.instance
     if (vv) log(`[very-verbose] Fetching channel name for UCID: ${ucid}`)
     const url = new URL(`/api/v1/channels/${ucid}`, instance).href
     const res = await fetch(url, {
@@ -268,6 +269,8 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
   try {
     const argTable = getGlobalVars()
     const vv = argTable.veryVerbose
+    if (!instance) instance = argTable.instance
+    if (!token) token = argTable.token
     if (vv) log(`[very-verbose] Fetching video info for VID: ${vid}`)
     const url = new URL(`/api/v1/videos/${vid}`, instance).href
     const res = await fetch(url, {
