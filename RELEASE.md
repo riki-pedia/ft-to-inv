@@ -1,18 +1,24 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## patch release 2.0.2 - 2026-01-4
+## minor release 2.1.0 - 2026-01-4
 ### Changelog: 
-- fix ugly log during the spinners
-- refactor log function to support both 'err' and 'level' options for backwards compatibility
-- updated dependencies
+- add a single typescript definition file for the project, which should be enough
+- add better context for plugins to use 
+- minor code cleanup and refactoring
+- better error handling and logging for plugin execution
+- add some new log levels
+- refactor logger internally
+- add some directories for logs to be stored in
+- i have some big things planned for the future, and this is just a small step towards that, make sure to stay tuned and star the repo if you haven't already so you don't miss out on the future updates
+- stop reading this and go try the new version out
 ### Breaking Changes:
-this is a bugfix
+potentially breaks some plugins that relied on the old context, but i tried to make it as backwards compatible as possible. if your plugin is broken, please let me know and i'll help you fix it.
 <!-- im quite lazy, so i don't update the readme often. -->
 <!-- ill probably do it next release -->
 ### Install:
 ```
-npm i -g ft-to-inv@2.0.1
+npm i -g ft-to-inv@2.1.0
 ft-to-inv --first-time-setup
 ```
 or install the same thing but on github:

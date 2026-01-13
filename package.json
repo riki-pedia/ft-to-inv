@@ -1,6 +1,6 @@
 {
   "name": "ft-to-inv",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "Converts FreeTube data to Invidious format and syncs with the Invidious API.",
   "keywords": [
     "FreeTube",
