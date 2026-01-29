@@ -218,6 +218,7 @@ const validPosArgs = [
   'export-dir',
   'freetube-dir',
   'cron-schedule',
+  'cron',
   'dont-shorten-paths',
   'first-time-setup',
   'dont-run-setup',
@@ -245,6 +246,7 @@ const posArgsExpectingValue = [
   'export-dir',
   'freetube-dir',
   'cron-schedule',
+  'cron',
   'config',
   'help',
   'plugins',
@@ -335,6 +337,15 @@ async function isExpectedArg(argList = args) {
       }
     } else if (validPosArgs.includes(a)) {
       if (posArgsExpectingValue.includes(a)) {
+        if (a.includes('cron')) {
+          // ignore next 5 cron parts
+          for (let j = 1; j <= 5; j++) {
+            const nextArg = argList[i + j]
+            if (nextArg && /^(\*|\d+|\*\/\d+|\d+-\d+)$/.test(nextArg)) {
+              skip.add(i + j)
+            }
+          }
+        }
         if (argList[i + 1]) skip.add(i + 1)
       } else {
         skip.add(i) // standalone positional arg, no value expected
@@ -434,11 +445,12 @@ function getRandomInt(min, max) {
 }
 function startHints() {
   function scheduleNextHint() {
-    const delay = getRandomInt(10_000, 60_000) // 10s–1m
+    const delay = getRandomInt(60_000, 300_000) // 1-5 min
     setTimeout(() => {
-      // note: cant be hints.length + 1 because that returns NaN. ill have to update this manually as i add more hints :/
-      const hintNumber = getRandomInt(1, 91)
-      log(`💡 ${hints[hintNumber === 91 ? 90 : hintNumber]}`)
+      const hintNumber = getRandomInt(1, Object.keys(hints).length + 1)
+      log(
+        `💡 ${hints[hintNumber === Object.keys(hints).length + 1 ? Object.keys(hints).length : hintNumber]}`
+      )
       scheduleNextHint() // queue another
     }, delay)
   }
@@ -454,9 +466,8 @@ async function maybeSchedule() {
     return
   } else {
     if (timesShown === 0) {
-      console.log(`[ft-to-inv] ⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`)
-      console.log('[ft-to-inv] Press Ctrl+C to exit')
-      log('Logs will only be saved for the initial run.', { level: 'warning' })
+      log(`⏰ Scheduling sync with cron pattern: ${CRON_SCHEDULE}`)
+      log('Press Ctrl+C to exit')
       timesShown++
     }
     // run once
@@ -467,9 +478,15 @@ async function maybeSchedule() {
     // run on interval
     cron.schedule(CRON_SCHEDULE, async () => {
       log(`🔄 Running scheduled sync at ${new Date().toLocaleString()}`)
-      await main().catch(err => {
-        log(`❌ Fatal error: ${err}`, { level: 'error' })
-        process.exit(1)
+      await main().catch(async err => {
+        log(`❌ fatal: ${err}`, { level: 'fatal' })
+        await logConsoleOutput()
+        await runHook('onError', { error: err })
+        log('waiting for writes to finish before exiting')
+        log('if this keeps happening please report an issue')
+        setTimeout(() => {
+          process.exit(1)
+        }, 100)
       })
     })
   }
@@ -493,7 +510,7 @@ async function getLatestRelease() {
     }
     if (semver.gt(latestTag, currentTag)) {
       log(
-        `📣 New release available: ${latestTag} (current: ${currentTag}) 📣 \n You can install it with: \`npm install -g ft-to-inv@${latestTag}\``,
+        `📣 New release available: ${latestTag} (current: ${currentTag}) 📣 \n You can install it with: \`[your least favorite package manager] install -g ft-to-inv@${latestTag}\``,
         { level: 'info' }
       )
       return latestTag
@@ -537,16 +554,44 @@ async function linuxWarning() {
 //#endregion
 //#region main fts
 // Main function to run the export and sync process
+/**
+ *
+ * @param {object?} overrides an object of the config options for the tool
+ * @example await main({ instance: 'http://127.0.0.1:8080' })
+ * @see this youtube video for more info: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+ */
 export async function main(overrides = {}) {
   // this one needs to be checked here because some logs happen before we assign other vars
-  SILENT = await resolveConfig(null, {
-    cliNames: ['--silent'],
-    envNames: ['FT_TO_INV_CONFIG_SILENT', 'SILENT', 'FT_TO_INV_SILENT'],
-    config: {},
-    args: args,
-    isFlag: true,
-    positionalArgs: ['silent'],
-  })
+  if (Object.keys(overrides).length !== 0) {
+    INSTANCE = overrides.instance || INSTANCE
+    TOKEN = overrides.token || TOKEN
+    FREETUBE_DIR = overrides.freetube_dir || FREETUBE_DIR
+    EXPORT_DIR = overrides.export_dir || EXPORT_DIR
+    VERBOSE = overrides.verbose || VERBOSE
+    DRY_RUN = overrides.dry_run || DRY_RUN
+    DONT_SHORTEN_PATHS = overrides.dont_shorten_paths || DONT_SHORTEN_PATHS
+    NOSYNC = overrides.noSync || NOSYNC
+    QUIET = overrides.quiet || QUIET
+    INSECURE = overrides.insecure || INSECURE
+    CRON_SCHEDULE = overrides.cron_schedule || overrides.cron || CRON_SCHEDULE
+    LOGS_BOOLEAN = overrides.logs || LOGS_BOOLEAN
+    HISTORY = overrides.history || HISTORY
+    HELPCMD = overrides.helpcmd || HELPCMD
+    SUBS = overrides.subscriptions || SUBS
+    PLAYLISTS = overrides.playlists || PLAYLISTS
+    SILENT = overrides.silent || SILENT
+    VERY_VERBOSE = overrides.veryVerbose || VERY_VERBOSE
+  }
+  if (!SILENT) {
+    SILENT = await resolveConfig(null, {
+      cliNames: ['--silent'],
+      envNames: ['FT_TO_INV_CONFIG_SILENT', 'SILENT', 'FT_TO_INV_SILENT'],
+      config: {},
+      args: args,
+      isFlag: true,
+      positionalArgs: ['silent'],
+    })
+  }
   const c = { silent: SILENT }
   setGlobalVars(c)
   if (!SILENT) console.log(`ft-to-inv v${version}:`)
@@ -616,7 +661,7 @@ export async function main(overrides = {}) {
   }
   await setConfig(config)
   //#endregion
-  //#region plugins, etc.,
+  //#region plugins, etc
   PLUGINS = await resolveConfig('plugins', {
     cliNames: ['--plugins', '-p'],
     envNames: ['FT_TO_INV_CONFIG_PLUGINS', 'PLUGINS', 'FT_TO_INV_PLUGINS'],
@@ -699,32 +744,36 @@ export async function main(overrides = {}) {
     return
   }
   //#endregion
-  //#region load/merge config and args
+  //#region config and args
   // spaghetti code isn't that far off of what this is
   // but it works so whatever
   // this section:
   // Load/merge CLI args + config file
   // Detect first-run (no config file or no prior export)
   // Assign globals from config
-  const baseExportDir = await resolveConfig('export_dir', {
-    cliNames: ['--export-dir', '-e'],
-    envNames: ['FT_TO_INV_CONFIG_EXPORT_DIR', 'EXPORT_DIR', 'FT_TO_INV_EXPORT_DIR'],
-    config: config,
-    args: args,
-    fallback: resolve('.'),
-    positionalArgs: ['export-dir', 'export'],
-  })
-  EXPORT_DIR = await sanitizePath(baseExportDir)
-  const baseFtDir = await resolveConfig('freetube_dir', {
-    cliNames: ['--freetube-dir', '-f', '-cd'],
-    envNames: ['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'],
-    config: config,
-    args: args,
-    fallback: getDefaultFreeTubeDir(),
-    positionalArgs: ['freetube-dir', 'freetube'],
-  })
-  FREETUBE_DIR = await sanitizePath(baseFtDir)
-  // token decryption/migration "helper"
+  if (EXPORT_DIR === undefined) {
+    const baseExportDir = await resolveConfig('export_dir', {
+      cliNames: ['--export-dir', '-e'],
+      envNames: ['FT_TO_INV_CONFIG_EXPORT_DIR', 'EXPORT_DIR', 'FT_TO_INV_EXPORT_DIR'],
+      config: config,
+      args: args,
+      fallback: resolve('.'),
+      positionalArgs: ['export-dir', 'export'],
+    })
+    EXPORT_DIR = await sanitizePath(baseExportDir)
+  }
+  if (FREETUBE_DIR === undefined) {
+    const baseFtDir = await resolveConfig('freetube_dir', {
+      cliNames: ['--freetube-dir', '-f', '-cd'],
+      envNames: ['FT_TO_INV_CONFIG_FREETUBE_DIR', 'FREETUBE_DIR', 'FT_TO_INV_FREETUBE_DIR'],
+      config: config,
+      args: args,
+      fallback: getDefaultFreeTubeDir(),
+      positionalArgs: ['freetube-dir', 'freetube'],
+    })
+    FREETUBE_DIR = await sanitizePath(baseFtDir)
+  } // token decryption/migration "helper"
+
   const getToken = async tokenArg => {
     //                       the name is stupid but i can't think of a better one
     const passphrase = await getPassOnAHeadlessMachine()
@@ -751,168 +800,176 @@ export async function main(overrides = {}) {
       }
     }
   }
-  const baseToken = await resolveConfig('token', {
-    cliNames: ['--token', '-t'],
-    envNames: ['FT_TO_INV_CONFIG_TOKEN', 'FT_TO_INV_TOKEN', 'TOKEN'],
-    config: config,
-    args: args,
-    positionalArgs: ['token', 't', 'auth'],
-  })
-  TOKEN = await getToken(baseToken)
-
-  INSTANCE = await resolveConfig('instance', {
-    cliNames: ['--instance', '-i'],
-    envNames: ['FT_TO_INV_CONFIG_INSTANCE', 'INSTANCE', 'FT_TO_INV_INSTANCE'],
-    config: config,
-    args: args,
-    fallback: 'https://invidious.example.com',
-    positionalArgs: ['instance', 'i'],
-  })
-  VERBOSE = await resolveConfig('verbose', {
-    cliNames: ['--verbose', '-v'],
-    envNames: ['FT_TO_INV_CONFIG_VERBOSE', 'VERBOSE', 'FT_TO_INV_VERBOSE'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['verbose'],
-  })
-  VERY_VERBOSE = await resolveConfig('very_verbose', {
-    cliNames: ['--very-verbose', '-vv'],
-    envNames: [
-      'FT_TO_INV_CONFIG_VERY_VERBOSE',
-      'VERY_VERBOSE',
-      'FT_TO_INV_VERY_VERBOSE',
-      'FT_TO_INV_VERYVERBOSE',
-      'VERYVERBOSE',
-    ],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['very-verbose', 'veryVerbose', 'vv'],
-  })
-  DRY_RUN = await resolveConfig('dry_run', {
-    cliNames: ['--dry-run'],
-    envNames: ['FT_TO_INV_CONFIG_DRY_RUN', 'DRY_RUN', 'FT_TO_INV_DRY_RUN'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['dry-run', 'dryRun', 'dry'],
-  })
-  QUIET = await resolveConfig('quiet', {
-    cliNames: ['--quiet', '-q'],
-    envNames: ['FT_TO_INV_CONFIG_QUIET', 'QUIET', 'FT_TO_INV_QUIET'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['quiet'],
-  })
+  if (TOKEN === undefined) {
+    const baseToken = await resolveConfig('token', {
+      cliNames: ['--token', '-t'],
+      envNames: ['FT_TO_INV_CONFIG_TOKEN', 'FT_TO_INV_TOKEN', 'TOKEN'],
+      config: config,
+      args: args,
+      positionalArgs: ['token', 't', 'auth'],
+    })
+    TOKEN = await getToken(baseToken)
+  }
+  if (INSTANCE === undefined) {
+    INSTANCE = await resolveConfig('instance', {
+      cliNames: ['--instance', '-i'],
+      envNames: ['FT_TO_INV_CONFIG_INSTANCE', 'INSTANCE', 'FT_TO_INV_INSTANCE'],
+      config: config,
+      args: args,
+      fallback: 'https://invidious.example.com',
+      positionalArgs: ['instance', 'i'],
+    })
+  }
+  if (VERBOSE === undefined) {
+    VERBOSE = await resolveConfig('verbose', {
+      cliNames: ['--verbose', '-v'],
+      envNames: ['FT_TO_INV_CONFIG_VERBOSE', 'VERBOSE', 'FT_TO_INV_VERBOSE'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['verbose'],
+    })
+  }
+  if (VERY_VERBOSE === undefined) {
+    VERY_VERBOSE = await resolveConfig('very_verbose', {
+      cliNames: ['--very-verbose', '-vv'],
+      envNames: [
+        'FT_TO_INV_CONFIG_VERY_VERBOSE',
+        'VERY_VERBOSE',
+        'FT_TO_INV_VERY_VERBOSE',
+        'FT_TO_INV_VERYVERBOSE',
+        'VERYVERBOSE',
+      ],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['very-verbose', 'veryVerbose', 'vv'],
+    })
+  }
+  if (DRY_RUN === undefined) {
+    DRY_RUN = await resolveConfig('dry_run', {
+      cliNames: ['--dry-run'],
+      envNames: ['FT_TO_INV_CONFIG_DRY_RUN', 'DRY_RUN', 'FT_TO_INV_DRY_RUN'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['dry-run', 'dryRun', 'dry'],
+    })
+  }
+  if (QUIET === undefined) {
+    QUIET = await resolveConfig('quiet', {
+      cliNames: ['--quiet', '-q'],
+      envNames: ['FT_TO_INV_CONFIG_QUIET', 'QUIET', 'FT_TO_INV_QUIET'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['quiet'],
+    })
+  }
   await runHook('duringMain', { overrides })
-  INSECURE = await resolveConfig('insecure', {
-    cliNames: ['--insecure', '--http'],
-    envNames: ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['insecure', 'http'],
-  })
-  NOSYNC = await resolveConfig('no_sync', {
-    cliNames: ['--no-sync'],
-    envNames: ['FT_TO_INV_CONFIG_NO_SYNC', 'NOSYNC', 'FT_TO_INV_NOSYNC'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['no-sync', 'noSync', 'nosync'],
-  })
-  DONT_SHORTEN_PATHS = await resolveConfig('dont_shorten_paths', {
-    cliNames: ['--dont-shorten-paths'],
-    envNames: [
-      'FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS',
-      'DONT_SHORTEN_PATHS',
-      'FT_TO_INV_DONT_SHORTEN_PATHS',
-    ],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['dont-shorten-paths', 'dontShortenPaths', 'dontShorten'],
-  })
+  // this is technically obsolete and not used anymore, but it's still a valid way to set the insecure flag so i'll leave it in for now (probably remove next major)
+  if (INSECURE === undefined) {
+    INSECURE = await resolveConfig('insecure', {
+      cliNames: ['--insecure', '--http'],
+      envNames: ['FT_TO_INV_CONFIG_INSECURE', 'INSECURE', 'FT_TO_INV_INSECURE'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['insecure', 'http'],
+    })
+  }
+  if (NOSYNC === undefined) {
+    NOSYNC = await resolveConfig('no_sync', {
+      cliNames: ['--no-sync'],
+      envNames: ['FT_TO_INV_CONFIG_NO_SYNC', 'NOSYNC', 'FT_TO_INV_NOSYNC'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['no-sync', 'noSync', 'nosync'],
+    })
+  }
+  if (DONT_SHORTEN_PATHS === undefined) {
+    DONT_SHORTEN_PATHS = await resolveConfig('dont_shorten_paths', {
+      cliNames: ['--dont-shorten-paths'],
+      envNames: [
+        'FT_TO_INV_CONFIG_DONT_SHORTEN_PATHS',
+        'DONT_SHORTEN_PATHS',
+        'FT_TO_INV_DONT_SHORTEN_PATHS',
+      ],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['dont-shorten-paths', 'dontShortenPaths', 'dontShorten'],
+    })
+  }
 
-  PLAYLISTS = await resolveConfig('playlists', {
-    cliNames: ['--playlists', '--dont-include-playlists', '-p'],
-    envNames: ['FT_TO_INV_CONFIG_PLAYLISTS', 'PLAYLISTS', 'FT_TO_INV_PLAYLISTS'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['playlists'],
-  })
-  HISTORY = await resolveConfig('history', {
-    cliNames: ['--history', '--dont-include-history', '-hi'],
-    envNames: ['FT_TO_INV_CONFIG_HISTORY', 'HISTORY', 'FT_TO_INV_HISTORY'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['history'],
-  })
-  SUBS = await resolveConfig('subscriptions', {
-    cliNames: ['--subscriptions', '--dont-include-subs', '-s'],
-    envNames: ['FT_TO_INV_CONFIG_SUBS', 'SUBS', 'FT_TO_INV_SUBS'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['subscriptions', 'subs'],
-  })
-
+  if (PLAYLISTS === undefined) {
+    PLAYLISTS = await resolveConfig('playlists', {
+      cliNames: ['--playlists', '--dont-include-playlists', '-p'],
+      envNames: ['FT_TO_INV_CONFIG_PLAYLISTS', 'PLAYLISTS', 'FT_TO_INV_PLAYLISTS'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['playlists'],
+    })
+  }
+  if (HISTORY === undefined) {
+    HISTORY = await resolveConfig('history', {
+      cliNames: ['--history', '--dont-include-history', '-hi'],
+      envNames: ['FT_TO_INV_CONFIG_HISTORY', 'HISTORY', 'FT_TO_INV_HISTORY'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['history'],
+    })
+  }
+  if (SUBS === undefined) {
+    SUBS = await resolveConfig('subscriptions', {
+      cliNames: ['--subscriptions', '--dont-include-subs', '-s'],
+      envNames: ['FT_TO_INV_CONFIG_SUBS', 'SUBS', 'FT_TO_INV_SUBS'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['subscriptions', 'subs'],
+    })
+  }
   OUTPUT_FILE = exportPath || join(EXPORT_DIR, 'invidious-import.json')
   OLD_EXPORT_PATH = join(EXPORT_DIR, 'import.old.json')
-  CRON_SCHEDULE = await resolveConfig('cron_schedule', {
-    cliNames: ['--cron-schedule', '-cron', '--cron'],
-    envNames: [
-      'FT_TO_INV_CONFIG_CRON_SCHEDULE',
-      'CRON_SCHEDULE',
-      'FT_TO_INV_CRON_SCHEDULE',
-      'CRON',
-    ],
-    config: config,
-    args: args,
-    fallback: '',
-    positionalArgs: ['cron-schedule', 'cron'],
-  })
-
-  LOGS_BOOLEAN = await resolveConfig('logs', {
-    cliNames: ['--logs', '-l'],
-    envNames: ['FT_TO_INV_CONFIG_LOGS', 'LOGS', 'FT_TO_INV_LOGS'],
-    config: config,
-    args: args,
-    isFlag: true,
-    positionalArgs: ['logs'],
-  })
+  if (CRON_SCHEDULE === undefined) {
+    CRON_SCHEDULE = await resolveConfig('cron_schedule', {
+      cliNames: ['--cron-schedule', '-cron', '--cron'],
+      envNames: [
+        'FT_TO_INV_CONFIG_CRON_SCHEDULE',
+        'CRON_SCHEDULE',
+        'FT_TO_INV_CRON_SCHEDULE',
+        'CRON',
+      ],
+      config: config,
+      args: args,
+      fallback: '',
+      positionalArgs: ['cron-schedule', 'cron'],
+    })
+  }
+  if (LOGS_BOOLEAN === undefined) {
+    LOGS_BOOLEAN = await resolveConfig('logs', {
+      cliNames: ['--logs', '-l'],
+      envNames: ['FT_TO_INV_CONFIG_LOGS', 'LOGS', 'FT_TO_INV_LOGS'],
+      config: config,
+      args: args,
+      isFlag: true,
+      positionalArgs: ['logs'],
+    })
+  }
   // intended for cases like `ft-to-inv help instance`
-  HELPCMD = await resolveConfig('help', {
-    config: config,
-    args: args,
-    isFlag: false,
-    positionalArgs: ['help'],
-    fallback: undefined,
-  })
-  //#endregion
-  //#region overrides
-  INSTANCE = overrides.instance || INSTANCE
-  TOKEN = overrides.token || TOKEN
-  FREETUBE_DIR = overrides.freetube_dir || FREETUBE_DIR
-  EXPORT_DIR = overrides.export_dir || EXPORT_DIR
-  VERBOSE = overrides.verbose || VERBOSE
-  DRY_RUN = overrides.dry_run || DRY_RUN
-  DONT_SHORTEN_PATHS = overrides.dont_shorten_paths || DONT_SHORTEN_PATHS
-  NOSYNC = overrides.noSync || NOSYNC
-  QUIET = overrides.quiet || QUIET
-  INSECURE = overrides.insecure || INSECURE
-  CRON_SCHEDULE = overrides.cron_schedule || CRON_SCHEDULE
-  LOGS_BOOLEAN = overrides.logs || LOGS_BOOLEAN
-  HISTORY = overrides.history || HISTORY
-  HELPCMD = overrides.helpcmd || HELPCMD
-  SUBS = overrides.subscriptions || SUBS
-  PLAYLISTS = overrides.playlists || PLAYLISTS
-  SILENT = overrides.silent || SILENT
-  VERY_VERBOSE = overrides.veryVerbose || VERY_VERBOSE
+  if (HELPCMD === undefined) {
+    HELPCMD = await resolveConfig('help', {
+      config: config,
+      args: args,
+      isFlag: false,
+      positionalArgs: ['help'],
+      fallback: undefined,
+    })
+  }
   // note: plugins dont go here because they need to be loaded earlier then exit
   const conf = {
     instance: INSTANCE,
@@ -1078,6 +1135,17 @@ Aliases:
  FT_TO_INV_CONFIG_VERBOSE, VERBOSE, FT_TO_INV_VERBOSE
  This is really simple, just makes the tool output more information about what it's doing.
  `)
+    } else if (h === 'very-verbose' || h === 'vv') {
+      log(`
+Very Verbose:
+ Enable very verbose logging.
+Usage:
+ ft-to-inv very-verbose
+Aliases:
+ --very-verbose, -vv
+ FT_TO_INV_CONFIG_VERY_VERBOSE, VERY_VERBOSE, FT_TO_INV_VERY_VERBOSE
+ This is like --verbose but even more so. Outputs EVERYTHING the tool is doing, including debug info.
+ `)
     } else if (h === 'dry-run') {
       log(`
 Dry Run:
@@ -1092,13 +1160,24 @@ Aliases:
     } else if (h === 'quiet') {
       log(`
 Quiet:
- Suppress all output except for errors.
+ Suppress all output except for warnings and errors.
 Usage:
  ft-to-inv quiet
 Aliases:
  --quiet, -q
  FT_TO_INV_CONFIG_QUIET, QUIET, FT_TO_INV_QUIET
  Opposite of --verbose. Silences most output except for errors and warnings.
+ `)
+    } else if (h === 'silent') {
+      log(`
+Silent:
+ Suppress all output.
+Usage:
+ ft-to-inv silent
+Aliases:
+ --silent
+ FT_TO_INV_CONFIG_SILENT, SILENT, FT_TO_INV_SILENT
+ Suppresses all output, including errors. Useful for running in scripts where you don't want any output at all.
  `)
     } else if (h === 'insecure' || h === 'http') {
       log(`
@@ -1180,6 +1259,7 @@ Usage:
 Aliases:
  --cron, -cron --cron-schedule
  FT_TO_INV_CONFIG_CRON, CRON, FT_TO_INV_CRON
+ pos args: cron-schedule, cron
  Takes a valid cron string, checks it, and sets the tool to run on a schedule based off it. For help with cron strings, see https://crontab.guru/.
  `)
     } else if (h === 'logs') {
@@ -1236,31 +1316,20 @@ Aliases:
  FT_TO_INV_CONFIG_PLUGINS, PLUGINS, FT_TO_INV_PLUGINS
  Use this command to manage plugins. You can list installed plugins, install new ones, and remove existing ones.
  To list installed plugins, run:
- ft-to-inv plugins list
+  ft-to-inv plugins list
  To install a plugin, run:
- ft-to-inv install <plugin-name>
+  ft-to-inv install <plugin-name>
  To remove a plugin, run:
- ft-to-inv remove <plugin-name>
+  ft-to-inv remove <plugin-name>
  To list available plugins from the marketplace, run:
- ft-to-inv marketplace
- `)
-    } else if (h === 'silent') {
-      log(`
-Silent:
- Suppress all console output.
-Usage:
- ft-to-inv silent
-Aliases:
- --silent
- FT_TO_INV_CONFIG_SILENT, SILENT, FT_TO_INV_SILENT
- Suppresses all console output, including errors. Useful for running the tool in the background or as a cron job.
+  ft-to-inv marketplace
  `)
     } else return log(`❌ Unknown help topic: ${HELPCMD || h}`, { level: 'error' })
     return
   }
   //#endregion
   //#region validation
-  if (!overrides || Object.keys(overrides).length === 0) {
+  if (Object.keys(overrides).length === 0) {
     try {
       config = await sanitizeConfig({
         token: TOKEN,
@@ -1285,8 +1354,7 @@ Aliases:
   HISTORY_PATH = join(FREETUBE_DIR, 'history.db')
   PLAYLIST_PATH = join(FREETUBE_DIR, 'playlists.db')
   if (QUIET && VERBOSE) {
-    log('❌ Conflicting options: --quiet and --verbose', { level: 'error' })
-    process.exit(1)
+    throw new Error('❌ Conflicting options: --quiet and --verbose', { level: 'error' })
   }
   // Validate required files
   for (const f of [HISTORY_PATH, PLAYLIST_PATH, PROFILE_PATH]) {
@@ -1296,8 +1364,7 @@ Aliases:
       log(
         `${HISTORY_PATH}, ${PLAYLIST_PATH}, ${PROFILE_PATH}, ${EXPORT_DIR}, ${OLD_EXPORT_PATH}, ${FREETUBE_DIR} (logged for debugging)`
       )
-      log(`❌ Required file missing: ${f}`, { level: 'error' })
-      process.exit(1)
+      throw new Error(`❌ Required file missing: ${f}`, { level: 'error' })
     }
   }
   if (!TOKEN && !DRY_RUN && !NOSYNC) {
@@ -1316,7 +1383,6 @@ Aliases:
     log(`   Old export → ${stripDir(OLD_EXPORT_PATH)}`, { level: 'info' })
   }
   await runHook('beforeSync', { conf: getGlobalVars() })
-  // Now call sync
   await sync()
 }
 function certErrorHint(err) {
@@ -1591,9 +1657,15 @@ export async function sync() {
   }
 
   let hadErrors = false
+  let lastError = null
   const markError = async (label, error) => {
     hadErrors = true
     log(`❌ ${label}: ${error.message || error}`, { level: 'error' })
+    lastError = error
+    await runHook('syncError', {
+      data: { label, error, newData },
+      conf: getGlobalVars(),
+    })
     certErrorHint(error)
   }
   //#endregion
@@ -1637,20 +1709,32 @@ export async function sync() {
     const hisSummary = []
     historySuccess = true
     let spinner
+    await runHook('beforeHistorySync', { data: newData, conf: getGlobalVars() })
     if (newHistory.length && !HISTORY) {
       if (!QUIET && !SILENT) {
-        // this looks like a false positive, but this is used as long as not QUIET
         spinner = ora(`Syncing history... (${historyCount}/${newHistory.length} videos)`).start()
       }
       for (const [i, videoId] of newHistory.entries()) {
         try {
+          const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN)
+          const prettyTitle = title || 'Unknown Title'
+          const prettyAuthor = author || 'Unknown Author'
           if (!QUIET && !SILENT) {
-            const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN)
-            const prettyTitle = title || 'Unknown Title'
-            const prettyAuthor = author || 'Unknown Author'
             const hisToAdd = `- ${prettyTitle} by ${prettyAuthor} (${videoId})`
             hisSummary.push(hisToAdd)
           }
+          await runHook('duringHistorySync', {
+            data: {
+              videoId,
+              index: i,
+              total: newHistory.length,
+              info: {
+                title: prettyTitle,
+                author: prettyAuthor,
+              },
+            },
+            conf: getGlobalVars(),
+          })
           await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE)
           historyCount++
           if (!QUIET && spinner) {
@@ -1669,6 +1753,11 @@ export async function sync() {
       }
       if (historySuccess === true) {
         spinner?.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
+        await runHook('afterHistorySync', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: true,
+        })
         if (newHistory.length <= 5 && !QUIET && !SILENT)
           for (const line of hisSummary) log(line, { color: 'green' })
         else if (!QUIET && !SILENT)
@@ -1676,6 +1765,12 @@ export async function sync() {
             color: 'green',
           })
       } else {
+        await runHook('afterHistorySync', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: false,
+          error: lastError,
+        })
         const message =
           "[ft-to-inv] history sync did not complete successfully. check previous errors for details. rather than continuing in this (potentially) broken state, i'll exit here."
         log(`❌ ${message}`, { level: 'fatal' })
@@ -1687,6 +1782,7 @@ export async function sync() {
     let subCount = 0
     let subSpinner
     let subSuccess = true
+    await runHook('beforeSubSync', { data: newData, conf: getGlobalVars() })
     if (!QUIET && !SILENT && !SUBS && newSubs.length) {
       subSpinner = ora(
         `Syncing subscriptions... (${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'})`
@@ -1697,14 +1793,24 @@ export async function sync() {
     if (newSubs.length && !SUBS) {
       for (const sub of newSubs) {
         try {
-          // im just fighting node at this point
+          const name = await getChannelName(sub, INSTANCE)
           if (!QUIET && !SILENT && subSpinner) {
             subCount++
             subSpinner.text = `Syncing subs... (${subCount}/${newSubs.length} channels)`
-            const name = await getChannelName(sub, INSTANCE)
             const prettySum = `- ${name} (${sub})`
             subSummary.push(prettySum)
           }
+          await runHook('duringSubSync', {
+            data: {
+              channelId: sub,
+              index: subCount - 1,
+              total: newSubs.length,
+              info: {
+                channel: name,
+              },
+            },
+            conf: getGlobalVars(),
+          })
           await retryPostRequest(`/auth/subscriptions/${sub}`, {}, TOKEN, INSTANCE, INSECURE)
         } catch (e) {
           if (!QUIET && !SILENT) {
@@ -1712,6 +1818,12 @@ export async function sync() {
               `(${subCount}/${newSubs.length}) ❌ Failed for ${sub}: ${e.message || e}`
             )
           }
+          await runHook('afterSubSync', {
+            data: newData,
+            conf: getGlobalVars(),
+            success: false,
+            error: e,
+          })
           subSuccess = false
           await markError(`Failed to subscribe to ${sub}`, e)
           // break the for loop to avoid multiple errors, since if one fails they probably all will
@@ -1719,6 +1831,11 @@ export async function sync() {
         }
       }
       if (subSuccess === true) {
+        await runHook('afterSubSync', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: true,
+        })
         if (!QUIET && !SILENT) {
           subSpinner?.succeed(
             `✅ Synced ${subCount}/${newSubs.length} channel${newSubs.length === 1 ? '' : 's'}`
@@ -1730,8 +1847,15 @@ export async function sync() {
         }
       } else {
         const message =
-          "[ft-to-inv] subscription sync did not complete successfully. check previous errors for details. this breaks the state of your export so it's best to exit here and fix whater went wrong before trying again."
+          "[ft-to-inv] subscription sync did not complete successfully. check previous errors for details. this breaks the state of your export so it's best to exit here and fix whatever went wrong before trying again."
         log(`❌ ${message}`, { level: 'fatal' })
+        await runHook('afterSubSync', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: false,
+          error:
+            lastError === null ? new Error('you might be cooked, no last error found') : lastError,
+        })
         throw new Error(message)
       }
     }
@@ -1741,6 +1865,7 @@ export async function sync() {
     const plSummary = []
     let plSuccess = true
     let plSpinner
+    await runHook('beforePlaylistSync', { data: newData, conf: getGlobalVars() })
     if (!QUIET && !SILENT && !PLAYLISTS && newPlaylists.length) {
       plSummary.push(
         `You will need to import the playlists manually into Invidious. Go to your instance > Settings > Import/Export > Import Invidious JSON data and select the generated playlist-import.json file. The playlists are:`
@@ -1762,6 +1887,14 @@ export async function sync() {
             log(`⚠️ Skipping invalid playlist entry: ${JSON.stringify(pl)}`, { level: 'warning' })
             continue // probably should break here but eh
           }
+          await runHook('duringPlaylistSync', {
+            data: {
+              playlist: pl,
+              index: plCount,
+              total: newPlaylists.length,
+            },
+            conf: getGlobalVars(),
+          })
           if (!QUIET && !SILENT && plSpinner) {
             plCount++
             plSpinner.text = `Preparing playlist export... (${plCount}/${newPlaylists.length} playlists)`
@@ -1797,6 +1930,11 @@ export async function sync() {
               color: 'green',
             })
           }
+          await runHook('afterPlaylistSync', {
+            data: newData,
+            conf: getGlobalVars(),
+            success: true,
+          })
           log(
             `playlist export complete. import the playlist-import.json file into your Invidious instance to finish the process.`
           )
@@ -1816,6 +1954,15 @@ export async function sync() {
     if (plSuccess === false) {
       const message =
         "[ft-to-inv] playlist export failed for reasons probably logged above. please fix the issues and try again. if you didn't see the error try changing to verbose mode for more details."
+      await runHook('afterPlaylistSync', {
+        data: newData,
+        conf: getGlobalVars(),
+        success: false,
+        error:
+          lastError === null
+            ? new Error('you might be cooked, no last error found. check the shell i guess')
+            : lastError,
+      })
       log(`❌ ${message}`, { level: 'fatal' })
       throw new Error(message)
     }
@@ -1823,9 +1970,9 @@ export async function sync() {
     //#endregion
     //#region removed history
     let removedHisCnt = 0
-    // Remove watched videos
     let rmHSpinner
     let rmHisSuccess = true
+    await runHook('beforeHistoryRemoval', { data: newData, conf: getGlobalVars() })
     if (removedHistory.length) {
       if (!QUIET && !SILENT) {
         rmHSpinner = ora(
@@ -1840,6 +1987,19 @@ export async function sync() {
             removedHisCnt++
             rmHSpinner.text = `Removing videos from watch history... (${removedHisCnt}/${removedHistory.length} videos)`
           }
+          const { title, author } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN)
+          await runHook('duringHistoryRemoval', {
+            data: {
+              videoId,
+              index: removedHisCnt - 1,
+              total: removedHistory.length,
+              info: {
+                title: title || 'Unknown Title',
+                author: author || 'Unknown Author',
+              },
+            },
+            conf: getGlobalVars(),
+          })
           await retryPostRequest(
             `/auth/history/${videoId}`,
             null,
@@ -1848,7 +2008,6 @@ export async function sync() {
             INSECURE,
             'DELETE'
           )
-          const { title, author } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN)
           hisRmSummary.push(` - Removed "${title}" by ${author}`)
         } catch (err) {
           if (!QUIET && !SILENT) {
@@ -1863,6 +2022,11 @@ export async function sync() {
         }
       }
       if (rmHisSuccess === true) {
+        await runHook('afterHistoryRemoval', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: true,
+        })
         if (!QUIET && !SILENT) {
           rmHSpinner?.succeed(
             `✅ Removed ${removedHisCnt}/${removedHistory.length} videos from watch history`
@@ -1876,6 +2040,12 @@ export async function sync() {
       } else {
         const message =
           "[ft-to-inv] history removal did not complete successfully. check previous errors for details. rather than continuing in this (potentially) broken state, i'll exit here."
+        await runHook('afterHistoryRemoval', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: false,
+          error: lastError,
+        })
         log(`❌ ${message}`, { level: 'fatal' })
         throw new Error(message)
       }
@@ -1884,6 +2054,7 @@ export async function sync() {
     //#region removed subs
     let removedSubCnt = 0
     let rmSubSuccess = true
+    await runHook('beforeSubRemoval', { data: newData, conf: getGlobalVars() })
     const subRmSummary = []
     if (!QUIET) {
       subRmSummary.push('Channels unsubscribed from:')
@@ -1898,9 +2069,19 @@ export async function sync() {
       // Unsubscribe from channels
       for (const ucid of removedSubs) {
         try {
+          const name = await getChannelName(ucid, INSTANCE)
+          await runHook('duringSubRemoval', {
+            data: {
+              channelId: ucid,
+              index: removedSubCnt,
+              total: removedSubs.length,
+              info: {
+                channel: name,
+              },
+            },
+            conf: getGlobalVars(),
+          })
           removedSubCnt++
-          // maybe i should use the `const res = ...` block i removed here to check for 404s and stuff
-          // but ill only do that if someone complains
           await retryPostRequest(
             `/auth/subscriptions/${ucid}`,
             null,
@@ -1910,7 +2091,6 @@ export async function sync() {
             'DELETE'
           )
           if (!QUIET && !SILENT && rmSSpinner) {
-            const name = await getChannelName(ucid, INSTANCE)
             const prettySum = `- ${name} (${ucid})`
             subRmSummary.push(prettySum)
             rmSSpinner.text = `Unsubscribing from channels... (${removedSubCnt}/${removedSubs.length} channels)`
@@ -1927,6 +2107,11 @@ export async function sync() {
         }
       }
       if (rmSubSuccess === true) {
+        await runHook('afterSubRemoval', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: true,
+        })
         if (!QUIET && !SILENT) {
           rmSSpinner?.succeed(
             `✅ Unsubscribed from ${removedSubCnt}/${removedSubs.length} channels`
@@ -1934,6 +2119,12 @@ export async function sync() {
           for (const line of subRmSummary) log(line)
         }
       } else {
+        await runHook('afterSubRemoval', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: false,
+          error: lastError,
+        })
         const message =
           "[ft-to-inv] subscription removal did not complete successfully. check previous errors for details. this breaks the state of your export so it's best to exit here and fix whater went wrong before trying again."
         log(`❌ ${message}`, { level: 'fatal' })
@@ -1942,6 +2133,7 @@ export async function sync() {
     }
     //#endregion
     //#region removed playlists
+    await runHook('beforePlaylistRemoval', { data: newData, conf: getGlobalVars() })
     let rmPlSuccess = true
     if (VERBOSE) log(`Processing removed playlists...`, { level: 'info' })
     // Remove deleted playlists from playlist-import.json
@@ -1957,8 +2149,21 @@ export async function sync() {
         importData.playlists = importData.playlists.filter(
           pl => !removedPlaylists.some(rp => rp.title.toLowerCase() === pl.title.toLowerCase())
         )
-
+        await runHook('duringPlaylistRemoval', {
+          data: {
+            removedPlaylists,
+            importData,
+          },
+          index: null,
+          total: removedPlaylists.length,
+          conf: getGlobalVars(),
+        })
         writeFileSync(importPath, JSON.stringify(importData, null, 2))
+        await runHook('afterPlaylistRemoval', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: true,
+        })
         if (!QUIET) {
           log(`🗑️ Removed ${removedPlaylists.length} playlists from ${importPath}`, {
             level: 'info',
@@ -1969,6 +2174,12 @@ export async function sync() {
         await markError(`Failed to update ${importPath} after removals`, err)
       }
       if (rmPlSuccess === false) {
+        await runHook('afterPlaylistRemoval', {
+          data: newData,
+          conf: getGlobalVars(),
+          success: false,
+          error: lastError,
+        })
         const message =
           '[ft-to-inv] playlist removal did not complete successfully. check previous errors for details. if you had new playlists to import, the playlist-import.json file may be in a broken state, so please check that file and fix any issues before trying again.'
         log(`❌ ${message}`, { level: 'fatal' })
@@ -1991,7 +2202,11 @@ export async function sync() {
         )
       }
     } else {
-      await runHook('onError', { error: 'check cmd' })
+      await runHook('onError', {
+        error: lastError ?? 'unknown error',
+        data: newData,
+        conf: getGlobalVars(),
+      })
       log(
         '⚠️ Some sync operations failed. Export not saved. Run with -v or --verbose for details.',
         { level: 'warning' }
@@ -2005,7 +2220,7 @@ export async function sync() {
       // do this stupid log message because i dont have data from markerror
       // i know i could just pass the error message, but i want to release this sooner
       // this is extremely unprofessional, but that also reflects on the code quality
-      await runHook('onError', { error: 'look at the terminal idk bro' })
+      await runHook('onError', { error: lastError ?? 'unknown error', conf: getGlobalVars() })
       log(
         'this error should be impossible to get. if you are a user please report this as an issue with details on what you did before this happened and the full logs from the terminal. github: https://github.com/riki-pedia/ft-to-inv/issues',
         { level: 'error' }
@@ -2037,6 +2252,7 @@ export async function sync() {
       return false
     },
   }
+  await logConsoleOutput()
   await runHook('afterSync', { data: newData, successes, conf: getGlobalVars() })
   if (!hadErrors) {
     const json = {
@@ -2046,7 +2262,7 @@ export async function sync() {
   }
 }
 //#endregion
-//#region call main and schedule
+//#region call main + schedule
 // Kick off
 const modulePath = realpathSync(fileURLToPath(import.meta.url))
 const entryPath = realpathSync(resolve(process.argv[1] || ''))
@@ -2063,5 +2279,4 @@ if (modulePath === entryPath) {
   })
 }
 await maybeSchedule()
-await logConsoleOutput()
 export default main

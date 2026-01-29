@@ -9,6 +9,7 @@ import http from 'http'
 import https from 'https'
 import { resolveConfig } from './args.js'
 import { encryptToken, getPassphrase, decryptToken } from './encryption.js'
+import { log } from './logs.js'
 /**
  * Get the value of an environment variable.
  * @param {string} option - The name of the environment variable to retrieve.
@@ -18,10 +19,6 @@ export function getEnv(option) {
   return process.env[option] || undefined
 }
 const DEFAULT_CONFIG_FILENAME = 'ft-to-inv.jsonc'
-// ignore for right now, might use later
-//const ENV_CONFIG_PATH = normalizePath(getEnv('FT_INV_CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG')) || normalizePath(getEnv('CONFIG')) || normalizePath(getEnv('FT_TO_INV_CONFIG_PATH'));
-
-// args parsed in export.js
 export function detectOs() {
   const platform = process.platform
   if (platform === 'win32') return 'windows'
@@ -46,7 +43,7 @@ function loadJsonc(filePath) {
     const raw = readFileSync(filePath, 'utf-8')
     return parse(raw)
   } catch (error) {
-    console.warn(`⚠️ Failed to load config at ${filePath}: ${error.message || error}`)
+    log(`⚠️ Failed to load config at ${filePath}: ${error.message || error}`, { level: 'warning' })
     return {}
   }
 }
@@ -68,7 +65,7 @@ async function testToken(instance, token) {
       fallback: false,
     })
     if (skipVer === true) return true
-    console.log('Testing token...')
+    log('Testing token...')
     const client = instance.startsWith('http:') ? http : https
     return new Promise((resolve, reject) => {
       // test a known token protected endpoint, but dont care about the response, just the status code
@@ -87,12 +84,12 @@ async function testToken(instance, token) {
         }
       })
       req.on('error', e => {
-        console.warn(`⚠️ Failed to verify token: ${e.message}`)
+        log(`⚠️ Failed to verify token: ${e.message}`, { level: 'warning' })
         reject(new Error(`Failed to verify token: ${e.message}`))
       })
     })
   } catch (error) {
-    console.warn(`⚠️ Failed to verify token: ${error.message}`)
+    log(`⚠️ Failed to verify token: ${error.message}`, { level: 'warning' })
     return false
   }
 }
@@ -296,7 +293,7 @@ function detectHttps(url) {
   return false
 }
 export async function runFirstTimeSetup() {
-  console.log("\n🛠 First-time setup: Let's configure your FreeTube → Invidious sync")
+  log("\n🛠 First-time setup: Let's configure your FreeTube → Invidious sync")
 
   const token = await prompt('Enter your Invidious token (SID cookie)')
   const pass = await getPassphrase()
@@ -349,13 +346,13 @@ export async function runFirstTimeSetup() {
     ...defaultConfig,
     ...config, // user-specified values override defaults
   }
-  console.log('\n[ft-to-inv] Verifying token and instance, please wait...')
+  log('\nVerifying token and instance, please wait...')
   const valid = await testToken(mergedConfig.instance, decryptedToken)
   if (!valid) {
-    console.error(
-      '[ft-to-inv] ❌ Token verification failed. Please check your token and instance URL and try again.'
-    )
-    console.log('[ft-to-inv] 👉 You can bypass these checks with the --skip-verification flag')
+    log('❌ Token verification failed. Please check your token and instance URL and try again.', {
+      level: 'error',
+    })
+    log('👉 You can bypass these checks with the --skip-verification flag')
     process.exit(1)
   }
   if (
@@ -368,9 +365,9 @@ export async function runFirstTimeSetup() {
   const savePath = configPath || _resolve(DEFAULT_CONFIG_FILENAME)
   const configFileContent = renderConfigWithComments(mergedConfig, comments, topComments)
   await promises.writeFile(savePath, configFileContent)
-  console.log(`[ft-to-inv] ✅ Config saved to ${savePath}`)
-  console.log('[ft-to-inv] ✅ Config initialized successfully.')
-  console.log('[ft-to-inv] 👉 Please run the command again to start syncing.')
+  log(` ✅ Config saved to ${savePath}`)
+  log(' ✅ Config initialized successfully.')
+  log('👉 Please run the command again to start syncing.')
   process.exit(0)
   // we exit here because the globals in export.js try to set while it's writing
 }

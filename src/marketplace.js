@@ -40,7 +40,7 @@ try {
   throw err
 }
 let hasNoErrors = true
-async function verifyPlugin(url, sha) {
+export async function verifyPlugin(url, sha) {
   const res = await fetchText(url)
   // remove the beginning "https://raw.githubusercontent.com/riki-pedia/ft-to-inv-pkg/refs/heads/main/plugins" from the url to get something like "example-plugin/example-plugin.js" for better logging
   const friendlyName = url.replace(

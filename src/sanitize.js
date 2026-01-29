@@ -69,9 +69,11 @@ export function sanitizeFilename(name) {
 
 // Cron
 function sanitizeCron(cronExpr) {
-  if (typeof cronExpr !== 'string') throw new Error('Invalid cron: must be a string')
+  if (typeof cronExpr !== 'string')
+    throw new Error('Invalid cron: must be a string. got ' + typeof cronExpr)
   if (cronExpr.trim() === '') return '' // allow empty cron to disable scheduling
-  if (!cron.validate(cronExpr)) throw new Error('Invalid cron: failed validation')
+  if (!cron.validate(cronExpr))
+    throw new Error(`Invalid cron: failed validation. cron was "${cronExpr}"`)
   return cronExpr
 }
 

@@ -5,6 +5,7 @@ import { join } from 'path'
 import https from 'https'
 import http from 'http'
 import { log } from './logs.js'
+import { runHook } from './loader.js'
 let config = {}
 const DEFAULT_HEADERS = {
   'User-Agent': 'ft-to-inv-bot/1.0 (+https://ft-to-inv-bot.riki-pedia.org/)',
@@ -89,6 +90,7 @@ export async function retryPostRequest(
     } catch (err) {
       lastError = err
       if (attempt < maxRetries) {
+        runHook('onRetry', { attempt, error: err })
         const delay = Math.pow(2, attempt) * 1000 // 2s, 4s, 8s...
         log(`⚠️ Attempt ${attempt} failed (${err.message}), retrying in ${delay / 1000}s...`, {
           level: 'warning',

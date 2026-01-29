@@ -1,24 +1,39 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## minor release 2.1.0 - 2026-01-4
+## minor release 2.2.0 - 2026-01-27(?)
 ### Changelog: 
-- add a single typescript definition file for the project, which should be enough
-- add better context for plugins to use 
-- minor code cleanup and refactoring
-- better error handling and logging for plugin execution
-- add some new log levels
-- refactor logger internally
-- add some directories for logs to be stored in
-- i have some big things planned for the future, and this is just a small step towards that, make sure to stay tuned and star the repo if you haven't already so you don't miss out on the future updates
-- stop reading this and go try the new version out
+- add some new hooks:
+    - beforeHistorySync
+    - duringHistorySync
+    - afterHistorySync
+    - beforeSubSync
+    - duringSubSync
+    - afterSubSync
+    - beforePlaylistSync
+    - duringPlaylistSync
+    - afterPlaylistSync
+    - beforeHistoryRemoval
+    - duringHistoryRemoval
+    - afterHistoryRemoval
+    - ( more just like the ones above for removed subscriptions and playlists )
+    - onSyncError (runs on the markError function calls, which happens before throwing errors in sync processes)
+    - onLog (note: this is the only hook that is synchronous and not async) (also runs on every log call)
+    - onRetry (runs when a request is retried)
+- improve help system
+- improve internal logging and its usage
+- better data for above hooks
+- various small improvements and fixes
+- official support for importing as a library
+- update deps
+- improve handling of cron jobs
 ### Breaking Changes:
-potentially breaks some plugins that relied on the old context, but i tried to make it as backwards compatible as possible. if your plugin is broken, please let me know and i'll help you fix it.
+- none 
 <!-- im quite lazy, so i don't update the readme often. -->
 <!-- ill probably do it next release -->
 ### Install:
 ```
-npm i -g ft-to-inv@2.1.0
+npm i -g ft-to-inv@2.2.0
 ft-to-inv --first-time-setup
 ```
 or install the same thing but on github:

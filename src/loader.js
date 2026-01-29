@@ -5,6 +5,7 @@ import { pathToFileURL } from 'url'
 import { getGlobalVars } from './args.js'
 import { log } from './logs.js'
 import { sanitizePath } from './sanitize.js'
+import crypto from 'crypto'
 export const plugins = []
 export const pluginMeta = []
 
@@ -39,7 +40,47 @@ export async function loadPlugins() {
 
     const filePath = pathToFileURL(scriptPath).href
     // this is a bit risky considering import runs any top-level code, but its the only way to dynamically load either esm or cjs without forcing ridiculous requirements on plugin devs like exporting classes or functions instead of just their hooks/register. the manifest is validated but it's STUPIDLY simple for a bad actor to make a "legit" manifest that passes validation but then have malicious code in the script (especially since all the gaurds protecting the user are in the github repo). only install plugins from trusted sources (like the built-in marketplace) or read the code yourself before installing if it's from a third party.
+    const getMarketplace = async () => {
+      try {
+        const url = 'https://ft-to-inv-pkg.riki-pedia.org/marketplace.json'
+        const json = fetch(url).then(res => res.json())
+        return json
+      } catch (err) {
+        log(`Failed to fetch marketplace data: ${err.message || err}`, { level: 'error' })
+        return null
+      }
+    }
+    const verifySha = async (content, expectedSha) => {
+      const actualSha = crypto.createHash('sha256').update(content).digest('hex')
+      if (actualSha.toLowerCase() !== expectedSha.toLowerCase()) {
+        throw new Error(
+          `[ft-to-inv] ❌ SHA mismatch for ${manifest.name}. Expected ${expectedSha}, got ${actualSha}`
+        )
+      }
+    }
+    await getMarketplace().then(async marketplace => {
+      if (marketplace) {
+        const pluginInfo = marketplace[manifest.name]
+        if (pluginInfo) {
+          await verifySha(fs.readFileSync(scriptPath, 'utf8'), pluginInfo.scriptSha).catch(err => {
+            const msg = `Failed to verify ${manifest.name} from marketplace: ${err.message || err}`
+            log(msg, {
+              level: 'error',
+            })
+            throw new Error(msg)
+          })
+        } else {
+          log(
+            `Plugin ${manifest.name} not found in marketplace for verification. if it is a marketplace plugin, try reinstalling it.`,
+            {
+              level: 'warning',
+            }
+          )
+        }
+      }
+    })
     const plugin = await import(filePath)
+    // note: will make this a lot better in v3
 
     if (plugin.register) {
       const meta = plugin.register()

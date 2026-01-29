@@ -10,13 +10,15 @@
   <br/>
   
 Takes FreeTube data and exports it to invidious-import.json, where it can be optionally imported to Invidious via the API. You can also schedule runs via the --cron flag, see below.
+### plugin warning
+there will be a huge breaking change to the plugin system in the next major version (3.0.0) so if you are a plugin dev, please be aware of that. Plugins for => 2.x will not work on 3.x and vice versa. i'll have a migration guide when that happens.
 ## Demo
 <img alt="demo of the tool" src="https://raw.githubusercontent.com/riki-pedia/ft-to-inv/refs/heads/master/assets/demo.gif" width="600"/>
 
 ## Why?
 "FreeTube is great for local use, but it doesn’t sync across devices. Invidious does. This tool bridges the gap so your history, subscriptions, and playlists stay consistent." - albert einstein i think 
 ### Warnings: 
-- wsl isnt supported right now, if you want to run on windows, use cmd, powershell, or windows terminal. Wsl has issues with keytar and system keychains.
+- wsl isnt supported right now, if you want to run on windows, use cmd, or powershell.
 - also its ur fault if my tool eats your files or something like that. you should back them up next time instead of blaming my hungry tool or me.
 - and i dont have a mac so pls report any macos issues if you have one (tested on windows 11 and ubuntu noble)
 <!-- this is extremely unprofessional but it shows what the code looks like -->

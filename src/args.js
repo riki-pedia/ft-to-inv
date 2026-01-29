@@ -83,6 +83,12 @@ export async function resolveConfig(
     // 2. Positional value args
     for (const alias of positionalArgs) {
       const idx = args.indexOf(alias)
+      if (alias.includes('cron')) {
+        const cronParts = args.slice(idx + 1, idx + 6)
+        if (cronParts.length >= 5 && cronParts.every(p => /^(\*|\d+)$/.test(p))) {
+          return cronParts.join(' ')
+        }
+      }
       if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith('-')) {
         return args[idx + 1]
       }
