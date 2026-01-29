@@ -1,7 +1,7 @@
 <!-- just a file to make the releases from for the automation script -->
 <!-- edit this per release -->
 <!-- when should i try properly versioning? -->
-## minor release 2.2.0 - 2026-01-27(?)
+## minor release 2.2.0 - 2026-01-28
 ### Changelog: 
 - add some new hooks:
     - beforeHistorySync
