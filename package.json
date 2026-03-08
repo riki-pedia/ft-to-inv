@@ -36,7 +36,8 @@
     "triage": "node ./scripts/triage.js",
     "comment": "node ./scripts/commentOnPr.js",
     "artifact": "node ./scripts/octokit-test.js",
-    "lint": "eslint . --fix"
+    "lint": "eslint . --fix",
+    "test-playlist": "node playlist-api-test.js"
   },
   "bin": {
     "ft-to-inv": "src/export.js"
