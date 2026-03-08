@@ -63,6 +63,7 @@ import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
 import { setGlobalVars } from './args.js'
+import pLimit from 'p-limit'
 
 //#endregion
 //#region helper functions
@@ -1709,48 +1710,55 @@ export async function sync() {
     const hisSummary = []
     historySuccess = true
     let spinner
+    const limit = pLimit(10) // arbitrary testing limit
     await runHook('beforeHistorySync', { data: newData, conf: getGlobalVars() })
     if (newHistory.length && !HISTORY) {
       if (!QUIET && !SILENT) {
         spinner = ora(`Syncing history... (${historyCount}/${newHistory.length} videos)`).start()
       }
-      for (const [i, videoId] of newHistory.entries()) {
-        try {
-          const { author, title } = await getVideoNameAndAuthor(videoId, INSTANCE, TOKEN)
-          const prettyTitle = title || 'Unknown Title'
-          const prettyAuthor = author || 'Unknown Author'
-          if (!QUIET && !SILENT) {
-            const hisToAdd = `- ${prettyTitle} by ${prettyAuthor} (${videoId})`
-            hisSummary.push(hisToAdd)
-          }
-          await runHook('duringHistorySync', {
-            data: {
-              videoId,
-              index: i,
-              total: newHistory.length,
-              info: {
-                title: prettyTitle,
-                author: prettyAuthor,
+      const historyPromises = newHistory.map((id, index) =>
+        limit(async () => {
+          try {
+            let video = await getVideoNameAndAuthor(id, INSTANCE, TOKEN).catch(e => {
+              log(`⚠️ Failed to get video info for ${id}: ${e.message || e}`, { level: 'warning' })
+              return { title: 'Unknown Title', author: 'Unknown Author' }
+            })
+            if (!video) video = { title: 'Unknown Title', author: 'Unknown Author' }
+            if (!video.title) video.title = 'Unknown Title'
+            if (!video.author) video.author = 'Unknown Author'
+            await runHook('duringHistorySync', {
+              data: {
+                videoId: id,
+                index,
+                total: newHistory.length,
+                info: {
+                  title: video.title || 'Unknown Title',
+                  author: video.author || 'Unknown Author',
+                },
               },
-            },
-            conf: getGlobalVars(),
-          })
-          await retryPostRequest(`/auth/history/${videoId}`, {}, TOKEN, INSTANCE, INSECURE)
-          historyCount++
-          if (!QUIET && spinner) {
-            spinner.text = `Syncing history... (${historyCount}/${newHistory.length} videos)`
+              conf: getGlobalVars(),
+            })
+            await retryPostRequest(`/auth/history/${id}`, {}, TOKEN, INSTANCE, INSECURE)
+            if (!QUIET && !SILENT && spinner) {
+              historyCount++
+              spinner.text = `Syncing history... (${historyCount}/${newHistory.length} videos)`
+              const prettySum = `- ${video.title || 'Unknown Title'} by ${video.author || 'Unknown Author'} (${id})`
+              hisSummary.push(prettySum)
+            }
+          } catch (e) {
+            if (!QUIET && !SILENT && spinner) {
+              spinner?.fail(
+                `(${index + 1}/${newHistory.length}) ❌ Failed for ${id}: ${e.message || e}`
+              )
+            }
+            await markError(`Failed to add ${id} to watch history`, e)
+            historySuccess = false
+            // this is in a loop and this is the only way to break out of it.
+            throw e
           }
-        } catch (e) {
-          if (!QUIET && !SILENT) {
-            spinner?.fail(
-              `(${i + 1}/${newHistory.length}) ❌ Failed for ${videoId}: ${e.message || e}`
-            )
-          }
-          historySuccess = false
-          await markError(`Failed to add ${videoId} to watch history`, e)
-          break
-        }
-      }
+        })
+      )
+      await Promise.all(historyPromises)
       if (historySuccess === true) {
         spinner?.succeed(`✅ Synced ${historyCount}/${newHistory.length} videos to watch history`)
         await runHook('afterHistorySync', {
