@@ -312,7 +312,7 @@ export async function getVideoNameAndAuthor(vid, instance, token) {
           `
         )
       }
-      return { author: 'Unknown', title: vid }
     }
   }
+  return { author: 'Unknown', title: vid }
 }
